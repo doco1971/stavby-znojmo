@@ -738,7 +738,8 @@ export default function App() {
     try { localStorage.setItem("theme", t); } catch {}
   };
 
-  const T = isDark ? { headerBg: "rgba(255,255,255,0.03)", headerBorder: "rgba(255,255,255,0.08)",
+  const T = isDark ? {
+    appBg: "#0f172a", headerBg: "rgba(255,255,255,0.03)", headerBorder: "rgba(255,255,255,0.08)",
     cardBg: "rgba(255,255,255,0.04)", cardBorder: "rgba(255,255,255,0.08)",
     theadBg: "#1a2744", cellBorder: "rgba(255,255,255,0.07)", filterBg: "rgba(255,255,255,0.02)",
     text: "#e2e8f0", textMuted: "rgba(255,255,255,0.45)", textFaint: "rgba(255,255,255,0.25)",
@@ -747,9 +748,9 @@ export default function App() {
   } : {
     appBg: "#f1f5f9", headerBg: "#ffffff", headerBorder: "rgba(0,0,0,0.08)",
     cardBg: "#ffffff", cardBorder: "rgba(0,0,0,0.08)",
-    theadBg: "#e2e8f0", cellBorder: "rgba(0,0,0,0.07)", filterBg: "#f8fafc",
+    theadBg: "#dde3ed", cellBorder: "rgba(0,0,0,0.07)", filterBg: "#f8fafc",
     text: "#1e293b", textMuted: "rgba(0,0,0,0.5)", textFaint: "rgba(0,0,0,0.3)",
-    inputBg: "#ffffff", inputBorder: "rgba(0,0,0,0.15)", modalBg: "#ffffff",
+    inputBg: "#ffffff", inputBorder: "rgba(0,0,0,0.2)", modalBg: "#ffffff",
     dropdownBg: "#ffffff", hoverBg: "rgba(0,0,0,0.04)", numColor: "#2563eb",
   };
 
