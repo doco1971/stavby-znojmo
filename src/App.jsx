@@ -5,7 +5,7 @@ import * as XLSX from "xlsx";
 // SUPABASE CONFIG
 // ============================================================
 const SB_URL = "https://cleifbyyhpbdjbrgzrkv.supabase.co";
-const SB_KEY = "sb_publishable_B2XYz7AcMxl9Exb-LVQg7w_zFC6mVGz";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsZWlmYnl5aHBiZGpicmd6cmt2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzOTkxMjcsImV4cCI6MjA4Nzk3NTEyN30.f3Kc4JHMSishVJJLmLq9kj7lcvF2gMb8uc0Lr-oZEIE";
 
 const sb = async (path, options = {}) => {
   const res = await fetch(`${SB_URL}/rest/v1/${path}`, {
@@ -477,7 +477,7 @@ export default function App() {
   // ── CRUD číselníky ─────────────────────────────────────────
   const saveSettings = async (nFirmy, nObjed, nSv) => {
     try {
-      await sb("ciselniky", { method: "DELETE", prefer: "return=minimal", headers: { "Content-Type": "application/json" } });
+      await sb("ciselniky?id=gt.0", { method: "DELETE", prefer: "return=minimal" });
       const items = [
         ...nFirmy.map((h, i) => ({ typ: "firma", hodnota: h, poradi: i })),
         ...nObjed.map((h, i) => ({ typ: "objednatel", hodnota: h, poradi: i })),
@@ -491,8 +491,7 @@ export default function App() {
   // ── CRUD uživatelé ─────────────────────────────────────────
   const saveUsers = async (uList) => {
     try {
-      // Smaž všechny a vlož znovu
-      await sb("uzivatele", { method: "DELETE", prefer: "return=minimal" });
+      await sb("uzivatele?id=gt.0", { method: "DELETE", prefer: "return=minimal" });
       const items = uList.map(u => ({ jmeno: u.name, email: u.email, heslo: u.password, role: u.role }));
       await sb("uzivatele", { method: "POST", body: JSON.stringify(items) });
       await loadAll();
