@@ -394,7 +394,7 @@ function FirmyEditor({ list, setList }) {
   );
 }
 
-function SettingsModal({ firmy, objednatele, stavbyvedouci, users, onChange, onChangeUsers, onClose, logData, onLoadLog, isAdmin }) {
+function SettingsModal({ firmy, objednatele, stavbyvedouci, users, onChange, onChangeUsers, onClose, onLoadLog, isAdmin }) {
   const [tab, setTab] = useState("ciselniky");
   const [f, setF] = useState([...firmy]);
   const [o, setO] = useState([...objednatele]);
@@ -402,6 +402,7 @@ function SettingsModal({ firmy, objednatele, stavbyvedouci, users, onChange, onC
   const [newF, setNewF] = useState("");
   const [newO, setNewO] = useState("");
   const [newS, setNewS] = useState("");
+  const [localLogData, setLocalLogData] = useState([]);
 
   // Users
   const [uList, setUList] = useState(users.map(u => ({ ...u })));
@@ -424,7 +425,12 @@ function SettingsModal({ firmy, objednatele, stavbyvedouci, users, onChange, onC
 
   const removeUser = (id) => setUList(uList.filter(u => u.id !== id));
 
-  useEffect(() => { if (tab === "log") onLoadLog(); }, [tab]);
+  const handleLoadLog = async () => {
+    const data = await onLoadLog();
+    setLocalLogData(data || []);
+  };
+
+  useEffect(() => { if (tab === "log") handleLoadLog(); }, [tab]);
 
   const fmtCas = (cas) => {
     const d = new Date(cas);
@@ -515,8 +521,8 @@ function SettingsModal({ firmy, objednatele, stavbyvedouci, users, onChange, onC
           {tab === "log" && (
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>{logData.length} záznamů</span>
-                <button onClick={onLoadLog} style={{ padding: "5px 12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, color: "#fff", cursor: "pointer", fontSize: 12 }}>🔄 Obnovit</button>
+                <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>{localLogData.length} záznamů</span>
+                <button onClick={handleLoadLog} style={{ padding: "5px 12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, color: "#fff", cursor: "pointer", fontSize: 12 }}>🔄 Obnovit</button>
               </div>
               <div style={{ overflowY: "auto", maxHeight: 420 }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
@@ -528,7 +534,7 @@ function SettingsModal({ firmy, objednatele, stavbyvedouci, users, onChange, onC
                     </tr>
                   </thead>
                   <tbody>
-                    {logData.map((r, i) => (
+                    {localLogData.map((r, i) => (
                       <tr key={r.id} style={{ background: i % 2 === 0 ? "rgba(255,255,255,0.02)" : "transparent" }}>
                         <td style={{ padding: "7px 12px", color: "rgba(255,255,255,0.4)", whiteSpace: "nowrap" }}>{fmtCas(r.cas)}</td>
                         <td style={{ padding: "7px 12px", color: "#e2e8f0" }}>{r.uzivatel}</td>
@@ -538,7 +544,7 @@ function SettingsModal({ firmy, objednatele, stavbyvedouci, users, onChange, onC
                         <td style={{ padding: "7px 12px", color: "rgba(255,255,255,0.5)", fontSize: 12 }}>{r.detail}</td>
                       </tr>
                     ))}
-                    {logData.length === 0 && (
+                    {localLogData.length === 0 && (
                       <tr><td colSpan={4} style={{ padding: 24, textAlign: "center", color: "rgba(255,255,255,0.2)" }}>Žádné záznamy</td></tr>
                     )}
                   </tbody>
@@ -592,7 +598,8 @@ export default function App() {
     try {
       const res = await sb("log_aktivit?order=cas.desc&limit=200");
       setLogData(res);
-    } catch (e) { console.warn("Log load error:", e); }
+      return res;
+    } catch (e) { console.warn("Log load error:", e); return []; }
   }, []);
 
   const isAdmin = user?.role === "admin";
@@ -1039,7 +1046,7 @@ export default function App() {
       )}
       {adding && <FormModal title="➕ Nová stavba" initial={emptyRow} onSave={r => { setData(d => [...d, r]); setAdding(false); }} onClose={() => setAdding(false)} firmy={firmy.map(f => f.hodnota)} objednatele={objednatele} stavbyvedouci={stavbyvedouci} />}
       {editRow && <FormModal title={`✏️ Editace stavby #${editRow.id}`} initial={editRow} onSave={r => { setData(d => d.map(x => x.id === r.id ? r : x)); setEditRow(null); }} onClose={() => setEditRow(null)} firmy={firmy.map(f => f.hodnota)} objednatele={objednatele} stavbyvedouci={stavbyvedouci} />}
-      {showSettings && <SettingsModal firmy={firmy} objednatele={objednatele} stavbyvedouci={stavbyvedouci} users={users} onChange={saveSettings} onChangeUsers={saveUsers} onClose={() => setShowSettings(false)} logData={logData} onLoadLog={loadLog} isAdmin={isAdmin} />}
+      {showSettings && <SettingsModal firmy={firmy} objednatele={objednatele} stavbyvedouci={stavbyvedouci} users={users} onChange={saveSettings} onChangeUsers={saveUsers} onClose={() => setShowSettings(false)} onLoadLog={loadLog} isAdmin={isAdmin} />}
 
       {deleteConfirm && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
