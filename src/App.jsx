@@ -23,7 +23,11 @@ const sb = async (path, options = {}) => {
   return text ? JSON.parse(text) : [];
 };
 
-const fmt = (n) => n == null || n === "" ? "" : Number(n).toLocaleString("cs-CZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const logAkce = async (uzivatel, akce, detail = "") => {
+  try {
+    await sb("log_aktivit", { method: "POST", body: JSON.stringify({ uzivatel, akce, detail }), prefer: "return=minimal" });
+  } catch (e) { console.warn("Log chyba:", e); }
+};
 const fmtN = (n) => (n == null || n === "" || Number(n) === 0) ? "" : fmt(n);
 
 function computeRow(row) {
@@ -88,7 +92,7 @@ function NativeSelect({ value, onChange, options, style }) {
 // ============================================================
 // LOGIN
 // ============================================================
-function Login({ onLogin, users }) {
+function Login({ onLogin, users, onLogAction }) {
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [err, setErr] = useState("");
@@ -98,7 +102,7 @@ function Login({ onLogin, users }) {
     setLoading(true);
     setTimeout(() => {
       const u = users.find(u => u.email === email && u.password === pass);
-      if (u) onLogin(u);
+      if (u) { onLogAction(u.email, "Přihlášení", ""); onLogin(u); }
       else { setErr("Nesprávný email nebo heslo"); setLoading(false); }
     }, 600);
   };
@@ -385,7 +389,7 @@ function FirmyEditor({ list, setList }) {
   );
 }
 
-function SettingsModal({ firmy, objednatele, stavbyvedouci, users, onChange, onChangeUsers, onClose }) {
+function SettingsModal({ firmy, objednatele, stavbyvedouci, users, onChange, onChangeUsers, onClose, logData, onLoadLog, isAdmin }) {
   const [tab, setTab] = useState("ciselniky");
   const [f, setF] = useState([...firmy]);
   const [o, setO] = useState([...objednatele]);
@@ -415,9 +419,19 @@ function SettingsModal({ firmy, objednatele, stavbyvedouci, users, onChange, onC
 
   const removeUser = (id) => setUList(uList.filter(u => u.id !== id));
 
+  useEffect(() => { if (tab === "log") onLoadLog(); }, [tab]);
+
+  const fmtCas = (cas) => {
+    const d = new Date(cas);
+    return d.toLocaleString("cs-CZ", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  };
+
+  const AKCE_COLOR = { "Přihlášení": "#60a5fa", "Přidání stavby": "#4ade80", "Editace stavby": "#fbbf24", "Smazání stavby": "#f87171", "Nastavení": "#c084fc" };
+
   const tabs = [
     { key: "ciselniky", label: "📋 Číselníky" },
     { key: "uzivatele", label: "👥 Uživatelé" },
+    ...(isAdmin ? [{ key: "log", label: "📜 Log aktivit" }] : []),
   ];
 
   return (
@@ -492,12 +506,47 @@ function SettingsModal({ firmy, objednatele, stavbyvedouci, users, onChange, onC
               </div>
             </div>
           )}
+
+          {tab === "log" && (
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>{logData.length} záznamů</span>
+                <button onClick={onLoadLog} style={{ padding: "5px 12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, color: "#fff", cursor: "pointer", fontSize: 12 }}>🔄 Obnovit</button>
+              </div>
+              <div style={{ overflowY: "auto", maxHeight: 420 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
+                  <thead>
+                    <tr style={{ background: "#1a2744" }}>
+                      {["Čas", "Uživatel", "Akce", "Detail"].map(h => (
+                        <th key={h} style={{ padding: "8px 12px", textAlign: "left", color: "rgba(255,255,255,0.5)", fontWeight: 700, fontSize: 11, borderBottom: "1px solid rgba(255,255,255,0.1)" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logData.map((r, i) => (
+                      <tr key={r.id} style={{ background: i % 2 === 0 ? "rgba(255,255,255,0.02)" : "transparent" }}>
+                        <td style={{ padding: "7px 12px", color: "rgba(255,255,255,0.4)", whiteSpace: "nowrap" }}>{fmtCas(r.cas)}</td>
+                        <td style={{ padding: "7px 12px", color: "#e2e8f0" }}>{r.uzivatel}</td>
+                        <td style={{ padding: "7px 12px" }}>
+                          <span style={{ background: (AKCE_COLOR[r.akce] || "#94a3b8") + "22", color: AKCE_COLOR[r.akce] || "#94a3b8", border: `1px solid ${(AKCE_COLOR[r.akce] || "#94a3b8")}44`, borderRadius: 5, padding: "2px 8px", fontSize: 11, fontWeight: 700 }}>{r.akce}</span>
+                        </td>
+                        <td style={{ padding: "7px 12px", color: "rgba(255,255,255,0.5)", fontSize: 12 }}>{r.detail}</td>
+                      </tr>
+                    ))}
+                    {logData.length === 0 && (
+                      <tr><td colSpan={4} style={{ padding: 24, textAlign: "center", color: "rgba(255,255,255,0.2)" }}>Žádné záznamy</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* footer */}
         <div style={{ padding: "14px 24px", borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", gap: 10, justifyContent: "flex-end" }}>
           <button onClick={onClose} style={{ padding: "9px 18px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", cursor: "pointer", fontSize: 13 }}>Zrušit</button>
-          <button onClick={() => { onChange(f, o, s); onChangeUsers(uList); onClose(); }} style={{ padding: "9px 22px", background: "linear-gradient(135deg,#16a34a,#15803d)", border: "none", borderRadius: 8, color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Uložit vše</button>
+          {tab !== "log" && <button onClick={() => { onChange(f, o, s); onChangeUsers(uList); onClose(); }} style={{ padding: "9px 22px", background: "linear-gradient(135deg,#16a34a,#15803d)", border: "none", borderRadius: 8, color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Uložit vše</button>}
         </div>
       </div>
     </div>
@@ -526,6 +575,14 @@ export default function App() {
   const [editingCell, setEditingCell] = useState(null);
   const [cellValue, setCellValue] = useState("");
   const [showExport, setShowExport] = useState(false);
+  const [logData, setLogData] = useState([]);
+
+  const loadLog = useCallback(async () => {
+    try {
+      const res = await sb("log_aktivit?order=cas.desc&limit=200");
+      setLogData(res);
+    } catch (e) { console.warn("Log load error:", e); }
+  }, []);
 
   const isAdmin = user?.role === "admin";
 
@@ -558,6 +615,7 @@ export default function App() {
     const { id, nabidka, rozdil, ...fields } = updated;
     try {
       await sb(`stavby?id=eq.${id}`, { method: "PATCH", body: JSON.stringify(fields) });
+      await logAkce(user?.email, "Editace stavby", `ID: ${id}, ${fields.nazev_stavby}`);
       await loadAll();
     } catch (e) { alert("Chyba uložení: " + e.message); }
     setEditRow(null);
@@ -567,14 +625,17 @@ export default function App() {
     const { id, nabidka, rozdil, ...fields } = newRow;
     try {
       await sb("stavby", { method: "POST", body: JSON.stringify(fields) });
+      await logAkce(user?.email, "Přidání stavby", fields.nazev_stavby);
       await loadAll();
     } catch (e) { alert("Chyba přidání: " + e.message); }
     setAdding(false);
   };
 
   const handleDelete = async (id) => {
+    const row = data.find(r => r.id === id);
     try {
       await sb(`stavby?id=eq.${id}`, { method: "DELETE", prefer: "return=minimal" });
+      await logAkce(user?.email, "Smazání stavby", `ID: ${id}, ${row?.nazev_stavby || ""}`);
       await loadAll();
     } catch (e) { alert("Chyba mazání: " + e.message); }
     setDeleteConfirm(null);
@@ -665,7 +726,7 @@ export default function App() {
     </div>
   );
 
-  if (!user) return <Login onLogin={setUser} users={users} />;
+  if (!user) return <Login onLogin={setUser} users={users} onLogAction={logAkce} />;
 
   const nextId = data.length > 0 ? Math.max(...data.map(r => r.id)) + 1 : 1;
   const emptyRow = { id: nextId, firma: firmy[0]?.hodnota||"", ps_i: 0, snk_i: 0, bo_i: 0, ps_ii: 0, bo_ii: 0, poruch: 0, cislo_stavby: "", nazev_stavby: "", vyfakturovano: 0, ukonceni: "", zrealizovano: "", sod: "", ze_dne: "", objednatel: objednatele[0]||"", stavbyvedouci: stavbyvedouci[0]||"", nabidkova_cena: 0, cislo_faktury: "", castka_bez_dph: 0, splatna: "" };
@@ -935,7 +996,7 @@ export default function App() {
       )}
       {adding && <FormModal title="➕ Nová stavba" initial={emptyRow} onSave={r => { setData(d => [...d, r]); setAdding(false); }} onClose={() => setAdding(false)} firmy={firmy.map(f => f.hodnota)} objednatele={objednatele} stavbyvedouci={stavbyvedouci} />}
       {editRow && <FormModal title={`✏️ Editace stavby #${editRow.id}`} initial={editRow} onSave={r => { setData(d => d.map(x => x.id === r.id ? r : x)); setEditRow(null); }} onClose={() => setEditRow(null)} firmy={firmy.map(f => f.hodnota)} objednatele={objednatele} stavbyvedouci={stavbyvedouci} />}
-      {showSettings && <SettingsModal firmy={firmy} objednatele={objednatele} stavbyvedouci={stavbyvedouci} users={users} onChange={saveSettings} onChangeUsers={saveUsers} onClose={() => setShowSettings(false)} />}
+      {showSettings && <SettingsModal firmy={firmy} objednatele={objednatele} stavbyvedouci={stavbyvedouci} users={users} onChange={saveSettings} onChangeUsers={saveUsers} onClose={() => setShowSettings(false)} logData={logData} onLoadLog={loadLog} isAdmin={isAdmin} />}
 
       {deleteConfirm && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
