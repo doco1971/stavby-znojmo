@@ -231,7 +231,7 @@ function FormModal({ title, initial, onSave, onClose, firmy, objednatele, stavby
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const computed = computeRow(form);
 
-  const numFields = ["ps_i","snk_i","bo_i","ps_ii","bo_ii","poruch","vyfakturovano","zrealizovano","nabidkova_cena","castka_bez_dph"];
+  const numFields = ["cislo_stavby","ps_i","snk_i","bo_i","ps_ii","bo_ii","poruch","vyfakturovano","zrealizovano","nabidkova_cena","castka_bez_dph"];
   const dateFields = ["ukonceni","splatna","ze_dne"];
 
   const handleSave = () => {
@@ -266,7 +266,7 @@ function FormModal({ title, initial, onSave, onClose, firmy, objednatele, stavby
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
 
             <SecHead color="#60a5fa">Základní informace</SecHead>
-            <FormField label="Číslo stavby" value={form["cislo_stavby"]} onChange={v => set("cislo_stavby", v)} />
+            <FormField label="Číslo stavby" value={form["cislo_stavby"]} onChange={v => set("cislo_stavby", v)} type="number" />
             <FormField label="Název stavby" value={form["nazev_stavby"]} onChange={v => set("nazev_stavby", v)} />
             <FormSelectField label="Firma" value={form["firma"]} onChange={v => set("firma", v)} options={firmy} />
 
@@ -623,12 +623,12 @@ export default function App() {
   const emptyRow = { id: nextId, firma: firmy[0]||"", ps_i: 0, snk_i: 0, bo_i: 0, ps_ii: 0, bo_ii: 0, poruch: 0, cislo_stavby: "", nazev_stavby: "", vyfakturovano: 0, ukonceni: "", zrealizovano: "", sod: "", ze_dne: "", objednatel: objednatele[0]||"", stavbyvedouci: stavbyvedouci[0]||"", nabidkova_cena: 0, cislo_faktury: "", castka_bez_dph: 0, splatna: "" };
 
   const FIRMA_ROW_COLORS = [
-    { bg0: "rgba(37,99,235,0.13)", bg1: "rgba(37,99,235,0.07)", badge: "rgba(37,99,235,0.2)", badgeBorder: "rgba(37,99,235,0.35)", text: "#60a5fa" },
-    { bg0: "rgba(202,138,4,0.15)", bg1: "rgba(202,138,4,0.08)", badge: "rgba(202,138,4,0.25)", badgeBorder: "rgba(202,138,4,0.45)", text: "#fde047" },
-    { bg0: "rgba(22,163,74,0.13)", bg1: "rgba(22,163,74,0.07)", badge: "rgba(22,163,74,0.2)", badgeBorder: "rgba(22,163,74,0.35)", text: "#4ade80" },
-    { bg0: "rgba(168,85,247,0.13)", bg1: "rgba(168,85,247,0.07)", badge: "rgba(168,85,247,0.2)", badgeBorder: "rgba(168,85,247,0.35)", text: "#c084fc" },
-    { bg0: "rgba(244,63,94,0.13)", bg1: "rgba(244,63,94,0.07)", badge: "rgba(244,63,94,0.2)", badgeBorder: "rgba(244,63,94,0.35)", text: "#fb7185" },
-    { bg0: "rgba(14,165,233,0.13)", bg1: "rgba(14,165,233,0.07)", badge: "rgba(14,165,233,0.2)", badgeBorder: "rgba(14,165,233,0.35)", text: "#38bdf8" },
+    { bg0: "rgba(96,165,250,0.22)", bg1: "rgba(96,165,250,0.12)", badge: "rgba(37,99,235,0.2)", badgeBorder: "rgba(37,99,235,0.35)", text: "#60a5fa" },
+    { bg0: "rgba(253,224,71,0.18)", bg1: "rgba(253,224,71,0.09)", badge: "rgba(202,138,4,0.25)", badgeBorder: "rgba(202,138,4,0.45)", text: "#fde047" },
+    { bg0: "rgba(192,132,252,0.20)", bg1: "rgba(192,132,252,0.10)", badge: "rgba(168,85,247,0.2)", badgeBorder: "rgba(168,85,247,0.35)", text: "#c084fc" },
+    { bg0: "rgba(251,113,133,0.20)", bg1: "rgba(251,113,133,0.10)", badge: "rgba(244,63,94,0.2)", badgeBorder: "rgba(244,63,94,0.35)", text: "#fb7185" },
+    { bg0: "rgba(56,189,248,0.20)", bg1: "rgba(56,189,248,0.10)", badge: "rgba(14,165,233,0.2)", badgeBorder: "rgba(14,165,233,0.35)", text: "#38bdf8" },
+    { bg0: "rgba(251,146,60,0.20)", bg1: "rgba(251,146,60,0.10)", badge: "rgba(249,115,22,0.2)", badgeBorder: "rgba(249,115,22,0.35)", text: "#fb923c" },
   ];
 
   const getFirmaColor = (firma) => {
@@ -709,12 +709,12 @@ export default function App() {
           </thead>
           <tbody>
             {filtered.map((row, i) => {
-              const isFaktura = row.cislo_faktury && row.cislo_faktury.trim() !== "" && row.splatna && row.splatna.trim() !== "";
-              const baseBg = isFaktura ? "rgba(22,163,74,0.15)" : rowBg(row.firma, i);
+              const isFaktura = row.cislo_faktury && row.cislo_faktury.trim() !== "" && row.castka_bez_dph && Number(row.castka_bez_dph) !== 0 && row.splatna && row.splatna.trim() !== "";
+              const baseBg = isFaktura ? "rgba(22,163,74,0.25)" : rowBg(row.firma, i);
               return (
               <tr key={row.id}
                 style={{ background: baseBg, transition: "background 0.1s" }}
-                onMouseEnter={e => e.currentTarget.style.background = isFaktura ? "rgba(22,163,74,0.25)" : "rgba(255,255,255,0.07)"}
+                onMouseEnter={e => e.currentTarget.style.background = isFaktura ? "rgba(22,163,74,0.38)" : "rgba(255,255,255,0.07)"}
                 onMouseLeave={e => e.currentTarget.style.background = baseBg}
               >
                 {COLUMNS.map(col => {
