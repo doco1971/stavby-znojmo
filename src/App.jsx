@@ -814,7 +814,7 @@ export default function App() {
           </svg>
           <div>
             <div style={{ fontWeight: 700, fontSize: 15 }}>Stavby Znojmo</div>
-            <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 11 }}>kategorie 1 & 2 <span style={{ marginLeft: 8, color: "rgba(255,255,255,0.2)", fontSize: 10 }}>v1.0 | 1.3.2026</span></div>
+            <div style={{ color: T.textMuted, fontSize: 11 }}>kategorie 1 & 2 <span style={{ marginLeft: 8, color: T.textFaint, fontSize: 10 }}>v1.0 | 1.3.2026</span></div>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -823,8 +823,8 @@ export default function App() {
           <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700, background: isAdmin ? "rgba(245,158,11,0.2)" : "rgba(100,116,139,0.2)", color: isAdmin ? "#fbbf24" : "#94a3b8" }}>{isAdmin ? "ADMIN" : "USER"}</span>
           {isAdmin && <button onClick={() => setShowSettings(true)} style={{ padding: "5px 12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: T.textMuted, cursor: "pointer", fontSize: 12 }}>⚙️ Nastavení</button>}
           <div style={{ display: "flex", background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 8, overflow: "hidden" }}>
-            {[["🌞","light"],["🌙","dark"],["💻","system"]].map(([icon, val]) => (
-              <button key={val} onClick={() => changeTheme(val)} title={val} style={{ padding: "5px 9px", background: theme === val ? (isDark ? "rgba(37,99,235,0.3)" : "rgba(37,99,235,0.15)") : "transparent", border: "none", color: theme === val ? "#60a5fa" : T.textMuted, cursor: "pointer", fontSize: 13 }}>{icon}</button>
+            {[["🌞","light","Světlý"],["🌙","dark","Tmavý"]].map(([icon, val, label]) => (
+              <button key={val} onClick={() => changeTheme(val)} title={label} style={{ padding: "5px 9px", background: theme === val ? (isDark ? "rgba(37,99,235,0.3)" : "rgba(37,99,235,0.15)") : "transparent", border: "none", color: theme === val ? "#60a5fa" : T.textMuted, cursor: "pointer", fontSize: 13 }}>{icon}</button>
             ))}
           </div>
           <button onClick={() => setUser(null)} style={{ padding: "5px 12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: T.textMuted, cursor: "pointer", fontSize: 12 }}>Odhlásit</button>
