@@ -28,6 +28,7 @@ const logAkce = async (uzivatel, akce, detail = "") => {
     await sb("log_aktivit", { method: "POST", body: JSON.stringify({ uzivatel, akce, detail }), prefer: "return=minimal" });
   } catch (e) { console.warn("Log chyba:", e); }
 };
+const fmt = (n) => n == null || n === "" ? "" : Number(n).toLocaleString("cs-CZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtN = (n) => (n == null || n === "" || Number(n) === 0) ? "" : fmt(n);
 
 function computeRow(row) {
@@ -1024,4 +1025,3 @@ export default function App() {
     </div>
   );
 }
-
