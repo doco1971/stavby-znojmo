@@ -586,6 +586,8 @@ export default function App() {
   });
   const [exportPreview, setExportPreview] = useState(null);
 
+  const isDarkComputed = (t) => t === "dark" || (t === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+
   const loadLog = useCallback(async () => {
     try {
       const res = await sb("log_aktivit?order=cas.desc&limit=200");
@@ -620,9 +622,10 @@ export default function App() {
   useEffect(() => { loadAll(); }, [loadAll]);
 
   useEffect(() => {
-    document.body.style.background = isDark ? "#0f172a" : "#f1f5f9";
-    document.body.style.color = isDark ? "#e2e8f0" : "#1e293b";
-  }, [isDark]);
+    const dark = isDarkComputed(theme);
+    document.body.style.background = dark ? "#0f172a" : "#f1f5f9";
+    document.body.style.color = dark ? "#e2e8f0" : "#1e293b";
+  }, [theme]);
 
   // ── CRUD stavby ────────────────────────────────────────────
   const handleSave = async (updated) => {
@@ -739,7 +742,7 @@ export default function App() {
 
   if (!user) return <Login onLogin={setUser} users={users} onLogAction={logAkce} />;
 
-  const isDark = theme === "dark" || (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  const isDark = isDarkComputed(theme);
 
   const changeTheme = (t) => {
     setTheme(t);
@@ -812,12 +815,7 @@ export default function App() {
 
   return (
     <div style={{ minHeight: "100vh", background: T.appBg, fontFamily: "'Segoe UI',Tahoma,sans-serif", color: T.text }}>
-      <style>{`
-        @keyframes spin{to{transform:rotate(360deg)}}
-        body { color: ${T.text} !important; }
-        table td, table th { color: ${T.text}; }
-        select option { background: ${T.modalBg}; color: ${T.text}; }
-      `}</style>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}} body{background:${T.appBg};color:${T.text}} table td{color:${T.text}} select option{background:${T.modalBg};color:${T.text}}`}</style>
 
       {/* HEADER */}
       <div style={{ background: T.headerBg, borderBottom: `1px solid ${T.headerBorder}`, padding: "11px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
