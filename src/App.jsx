@@ -577,6 +577,10 @@ export default function App() {
   const [cellValue, setCellValue] = useState("");
   const [showExport, setShowExport] = useState(false);
   const [logData, setLogData] = useState([]);
+  const [theme, setTheme] = useState(() => {
+    try { return localStorage.getItem("theme") || "dark"; } catch { return "dark"; }
+  });
+  const [exportPreview, setExportPreview] = useState(null);
 
   const loadLog = useCallback(async () => {
     try {
@@ -689,8 +693,6 @@ export default function App() {
     setEditingCell(null);
   };
 
-  const [exportPreview, setExportPreview] = useState(null); // { type, content }
-
   const exportCSV = () => {
     setExportPreview({ type: "csv" });
     setShowExport(false);
@@ -728,10 +730,6 @@ export default function App() {
   );
 
   if (!user) return <Login onLogin={setUser} users={users} onLogAction={logAkce} />;
-
-  const [theme, setTheme] = useState(() => {
-    try { return localStorage.getItem("theme") || "dark"; } catch { return "dark"; }
-  });
 
   const isDark = theme === "dark" || (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
 
