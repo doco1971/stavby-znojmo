@@ -729,13 +729,18 @@ export default function App() {
 
   if (!user) return <Login onLogin={setUser} users={users} onLogAction={logAkce} />;
 
-  const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "dark");
+  const [theme, setTheme] = useState(() => {
+    try { return localStorage.getItem("theme") || "dark"; } catch { return "dark"; }
+  });
 
-  const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  const isDark = theme === "dark" || (theme === "system" && systemDark);
+  const isDark = theme === "dark" || (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
 
-  const T = isDark ? {
-    appBg: "#0f172a", headerBg: "rgba(255,255,255,0.03)", headerBorder: "rgba(255,255,255,0.08)",
+  const changeTheme = (t) => {
+    setTheme(t);
+    try { localStorage.setItem("theme", t); } catch {}
+  };
+
+  const T = isDark ? { headerBg: "rgba(255,255,255,0.03)", headerBorder: "rgba(255,255,255,0.08)",
     cardBg: "rgba(255,255,255,0.04)", cardBorder: "rgba(255,255,255,0.08)",
     theadBg: "#1a2744", cellBorder: "rgba(255,255,255,0.07)", filterBg: "rgba(255,255,255,0.02)",
     text: "#e2e8f0", textMuted: "rgba(255,255,255,0.45)", textFaint: "rgba(255,255,255,0.25)",
