@@ -337,6 +337,54 @@ function ListEditor({ label, color, list, setList, nv, setNv }) {
   );
 }
 
+function FirmyEditor({ list, setList }) {
+  const [newNazev, setNewNazev] = useState("");
+  const [newBarva, setNewBarva] = useState("#3b82f6");
+  const PRESET_COLORS = ["#3b82f6","#eab308","#a855f7","#ef4444","#0ea5e9","#f97316","#10b981","#ec4899","#f59e0b","#6366f1"];
+
+  const add = () => {
+    const v = newNazev.trim();
+    if (v && !list.find(f => f.hodnota === v)) {
+      setList([...list, { hodnota: v, barva: newBarva }]);
+      setNewNazev("");
+    }
+  };
+
+  const rem = (hodnota) => setList(list.filter(f => f.hodnota !== hodnota));
+  const changeBarva = (hodnota, barva) => setList(list.map(f => f.hodnota === hodnota ? { ...f, barva } : f));
+
+  return (
+    <div style={{ flex: 1 }}>
+      <div style={{ color: "#60a5fa", fontWeight: 700, fontSize: 12, letterSpacing: 0.5, marginBottom: 10, borderLeft: "3px solid #60a5fa", paddingLeft: 8 }}>Firmy</div>
+      <div style={{ display: "flex", gap: 6, marginBottom: 10, alignItems: "center" }}>
+        <input value={newNazev} onChange={e => setNewNazev(e.target.value)} onKeyDown={e => e.key === "Enter" && add()}
+          placeholder="Název firmy..." style={{ ...inputSx, flex: 1, fontSize: 12 }} />
+        <input type="color" value={newBarva} onChange={e => setNewBarva(e.target.value)}
+          style={{ width: 36, height: 36, border: "none", borderRadius: 6, cursor: "pointer", background: "none", padding: 2 }} />
+        <button onClick={add} style={{ padding: "8px 12px", background: "rgba(37,99,235,0.3)", border: "1px solid rgba(37,99,235,0.5)", borderRadius: 7, color: "#60a5fa", cursor: "pointer", fontWeight: 700 }}>+</button>
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+        {PRESET_COLORS.map(c => (
+          <div key={c} onClick={() => setNewBarva(c)} style={{ width: 20, height: 20, borderRadius: 4, background: c, cursor: "pointer", border: newBarva === c ? "2px solid #fff" : "2px solid transparent" }} />
+        ))}
+      </div>
+      {list.map(f => (
+        <div key={f.hodnota} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 10px", marginBottom: 5, background: "rgba(255,255,255,0.04)", borderRadius: 6, border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 14, height: 14, borderRadius: 3, background: f.barva || "#3b82f6" }} />
+            <span style={{ color: "#e2e8f0", fontSize: 13 }}>{f.hodnota}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <input type="color" value={f.barva || "#3b82f6"} onChange={e => changeBarva(f.hodnota, e.target.value)}
+              style={{ width: 28, height: 28, border: "none", borderRadius: 4, cursor: "pointer", background: "none", padding: 1 }} />
+            <button onClick={() => rem(f.hodnota)} style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", fontSize: 14 }}>✕</button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function SettingsModal({ firmy, objednatele, stavbyvedouci, users, onChange, onChangeUsers, onClose }) {
   const [tab, setTab] = useState("ciselniky");
   const [f, setF] = useState([...firmy]);
@@ -395,7 +443,7 @@ function SettingsModal({ firmy, objednatele, stavbyvedouci, users, onChange, onC
         <div style={{ padding: 24, overflowY: "auto", flex: 1 }}>
           {tab === "ciselniky" && (
             <div style={{ display: "flex", gap: 20 }}>
-              <ListEditor label="Firmy" color="#60a5fa" list={f} setList={setF} nv={newF} setNv={setNewF} />
+              <FirmyEditor list={f} setList={setF} />
               <ListEditor label="Objednatelé" color="#34d399" list={o} setList={setO} nv={newO} setNv={setNewO} />
               <ListEditor label="Stavbyvedoucí" color="#f472b6" list={s} setList={setS} nv={newS} setNv={setNewS} />
             </div>
@@ -620,24 +668,22 @@ export default function App() {
   if (!user) return <Login onLogin={setUser} users={users} />;
 
   const nextId = data.length > 0 ? Math.max(...data.map(r => r.id)) + 1 : 1;
-  const emptyRow = { id: nextId, firma: firmy[0]||"", ps_i: 0, snk_i: 0, bo_i: 0, ps_ii: 0, bo_ii: 0, poruch: 0, cislo_stavby: "", nazev_stavby: "", vyfakturovano: 0, ukonceni: "", zrealizovano: "", sod: "", ze_dne: "", objednatel: objednatele[0]||"", stavbyvedouci: stavbyvedouci[0]||"", nabidkova_cena: 0, cislo_faktury: "", castka_bez_dph: 0, splatna: "" };
+  const emptyRow = { id: nextId, firma: firmy[0]?.hodnota||"", ps_i: 0, snk_i: 0, bo_i: 0, ps_ii: 0, bo_ii: 0, poruch: 0, cislo_stavby: "", nazev_stavby: "", vyfakturovano: 0, ukonceni: "", zrealizovano: "", sod: "", ze_dne: "", objednatel: objednatele[0]||"", stavbyvedouci: stavbyvedouci[0]||"", nabidkova_cena: 0, cislo_faktury: "", castka_bez_dph: 0, splatna: "" };
 
-  const FIRMA_COLOR_MAP = {
-    "DUR plus": { bg: "rgba(96,165,250,0.22)", badge: "rgba(37,99,235,0.2)", badgeBorder: "rgba(37,99,235,0.35)", text: "#60a5fa" },
-    "ZMES":     { bg: "rgba(253,224,71,0.20)", badge: "rgba(202,138,4,0.25)", badgeBorder: "rgba(202,138,4,0.45)", text: "#fde047" },
-  };
   const FIRMA_COLOR_FALLBACK = [
-    { bg: "rgba(192,132,252,0.20)", badge: "rgba(168,85,247,0.2)", badgeBorder: "rgba(168,85,247,0.35)", text: "#c084fc" },
-    { bg: "rgba(251,113,133,0.20)", badge: "rgba(244,63,94,0.2)",  badgeBorder: "rgba(244,63,94,0.35)",  text: "#fb7185" },
-    { bg: "rgba(56,189,248,0.20)",  badge: "rgba(14,165,233,0.2)", badgeBorder: "rgba(14,165,233,0.35)", text: "#38bdf8" },
-    { bg: "rgba(251,146,60,0.20)",  badge: "rgba(249,115,22,0.2)", badgeBorder: "rgba(249,115,22,0.35)", text: "#fb923c" },
+    "#3b82f6","#eab308","#a855f7","#ef4444","#0ea5e9","#f97316","#10b981","#ec4899",
   ];
 
-  const getFirmaColor = (firma) => {
-    if (FIRMA_COLOR_MAP[firma]) return FIRMA_COLOR_MAP[firma];
-    const extraFirmy = firmy.filter(f => !FIRMA_COLOR_MAP[f]);
-    const idx = extraFirmy.indexOf(firma);
-    return FIRMA_COLOR_FALLBACK[(idx >= 0 ? idx : 0) % FIRMA_COLOR_FALLBACK.length];
+  const getFirmaColor = (firmaName) => {
+    const firmaObj = firmy.find(f => f.hodnota === firmaName);
+    const hex = (firmaObj?.barva && firmaObj.barva !== "") ? firmaObj.barva
+      : FIRMA_COLOR_FALLBACK[firmy.findIndex(f => f.hodnota === firmaName) % FIRMA_COLOR_FALLBACK.length] || "#3b82f6";
+    return {
+      bg: hex + "38",
+      badge: hex + "33",
+      badgeBorder: hex + "77",
+      text: hex,
+    };
   };
 
   const firmaBadge = (firma) => {
@@ -672,12 +718,12 @@ export default function App() {
       </div>
 
       {/* SUMMARY */}
-      <SummaryCards data={data} firmy={firmy} />
+      <SummaryCards data={data} firmy={firmy.map(f => f.hodnota)} />
 
       {/* FILTERS */}
       <div style={{ padding: "10px 18px", display: "flex", gap: 10, alignItems: "center", background: "rgba(255,255,255,0.02)", borderBottom: "1px solid rgba(255,255,255,0.05)", flexWrap: "wrap" }}>
         <input placeholder="🔍 Hledat stavbu / číslo..." value={filterText} onChange={e => setFilterText(e.target.value)} style={{ ...inputSx, width: 230 }} />
-        <NativeSelect value={filterFirma} onChange={setFilterFirma} options={["Všechny firmy", ...firmy]} style={{ width: 170 }} />
+        <NativeSelect value={filterFirma} onChange={setFilterFirma} options={["Všechny firmy", ...firmy.map(f => f.hodnota)]} style={{ width: 170 }} />
         <NativeSelect value={filterObjed} onChange={setFilterObjed} options={["Všichni objednatelé", ...objednatele]} style={{ width: 190 }} />
         <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
           <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 12 }}>{filtered.length} záznamů</span>
@@ -722,7 +768,7 @@ export default function App() {
                   const isEditing = editingCell?.rowId === row.id && editingCell?.colKey === col.key;
                   const canEdit = isAdmin && !col.computed && col.key !== "id";
                   const align = col.key === "id" ? "center" : col.type === "number" ? "right" : "left";
-                  const selectOptions = col.key === "firma" ? firmy : col.key === "objednatel" ? objednatele : col.key === "stavbyvedouci" ? stavbyvedouci : null;
+                  const selectOptions = col.key === "firma" ? firmy.map(f => f.hodnota) : col.key === "objednatel" ? objednatele : col.key === "stavbyvedouci" ? stavbyvedouci : null;
                   const isSelectCol = selectOptions != null;
                   return (
                     <td key={col.key}
@@ -864,8 +910,8 @@ export default function App() {
           </div>
         </div>
       )}
-      {adding && <FormModal title="➕ Nová stavba" initial={emptyRow} onSave={r => { setData(d => [...d, r]); setAdding(false); }} onClose={() => setAdding(false)} firmy={firmy} objednatele={objednatele} stavbyvedouci={stavbyvedouci} />}
-      {editRow && <FormModal title={`✏️ Editace stavby #${editRow.id}`} initial={editRow} onSave={r => { setData(d => d.map(x => x.id === r.id ? r : x)); setEditRow(null); }} onClose={() => setEditRow(null)} firmy={firmy} objednatele={objednatele} stavbyvedouci={stavbyvedouci} />}
+      {adding && <FormModal title="➕ Nová stavba" initial={emptyRow} onSave={r => { setData(d => [...d, r]); setAdding(false); }} onClose={() => setAdding(false)} firmy={firmy.map(f => f.hodnota)} objednatele={objednatele} stavbyvedouci={stavbyvedouci} />}
+      {editRow && <FormModal title={`✏️ Editace stavby #${editRow.id}`} initial={editRow} onSave={r => { setData(d => d.map(x => x.id === r.id ? r : x)); setEditRow(null); }} onClose={() => setEditRow(null)} firmy={firmy.map(f => f.hodnota)} objednatele={objednatele} stavbyvedouci={stavbyvedouci} />}
       {showSettings && <SettingsModal firmy={firmy} objednatele={objednatele} stavbyvedouci={stavbyvedouci} users={users} onChange={saveSettings} onChangeUsers={saveUsers} onClose={() => setShowSettings(false)} />}
 
       {deleteConfirm && (
