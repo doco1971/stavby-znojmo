@@ -951,6 +951,17 @@ export default function App() {
     setShowExport(false);
   };
 
+  const zalohaExcel = () => {
+    const headers = COLUMNS.filter(c => !c.computed && c.key !== "id").map(c => c.label);
+    const rows = data.map(row => COLUMNS.filter(c => !c.computed && c.key !== "id").map(c => row[c.key] ?? ""));
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    XLSX.utils.book_append_sheet(wb, ws, "Záloha");
+    const datum = new Date().toISOString().slice(0,10);
+    XLSX.writeFile(wb, `zaloha_stavby_${datum}.xlsx`);
+    logAkce(user?.email, "Záloha", `${data.length} záznamů`);
+  };
+
   if (loading) return (
     <div style={{ minHeight: "100vh", background: "#0f172a", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Segoe UI',sans-serif" }}>
       <div style={{ textAlign: "center" }}>
@@ -1099,6 +1110,7 @@ export default function App() {
           {isSuperAdmin && Object.keys(colWidths).length > 0 && (
             <button onClick={() => { setColWidths({}); saveColWidths({}); }} style={{ padding: "5px 10px", background: "rgba(168,85,247,0.15)", border: "1px solid rgba(168,85,247,0.3)", borderRadius: 7, color: "#c084fc", cursor: "pointer", fontSize: 11 }} title="Reset šířek sloupců">↺ Reset šířek</button>
           )}
+          {isAdmin && <button onClick={zalohaExcel} style={{ padding: "7px 14px", background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.15)"}`, borderRadius: 7, color: T.text, cursor: "pointer", fontSize: 12 }} title="Stáhne všechna data jako Excel zálohu">💾 Záloha</button>}
           {isAdmin && <button onClick={() => setAdding(true)} style={{ padding: "7px 14px", background: "linear-gradient(135deg,#16a34a,#15803d)", border: "none", borderRadius: 7, color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>+ Přidat stavbu</button>}
         </div>
       </div>
