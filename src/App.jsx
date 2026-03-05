@@ -938,7 +938,7 @@ export default function App() {
 
   return (
     <div style={{ minHeight: "100vh", background: T.appBg, fontFamily: "'Segoe UI',Tahoma,sans-serif", color: T.text }}>
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}} ${!isDark ? "table td:not(.colored-cell), table td:not(.colored-cell) * { color: #1e293b !important; } .firma-badge { color: inherit !important; }" : ""}`}</style>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}} ${!isDark ? "table td:not(.colored-cell) { color: #1e293b; } table td:not(.colored-cell) input { color: #1e293b; } table td:not(.colored-cell) select { color: #1e293b; }" : ""}`}</style>
 
       {/* HEADER */}
       <div ref={headerRef} style={{ background: T.headerBg, borderBottom: `1px solid ${T.headerBorder}`, padding: "11px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -975,14 +975,14 @@ export default function App() {
         <NativeSelect value={filterFirma} onChange={setFilterFirma} options={["Všechny firmy", ...firmy.map(f => f.hodnota)]} style={{ width: 170, background: T.inputBg, color: T.text, borderColor: T.inputBorder }} />
         <NativeSelect value={filterObjed} onChange={setFilterObjed} options={["Všichni objednatelé", ...objednatele]} style={{ width: 190, background: T.inputBg, color: T.text, borderColor: T.inputBorder }} />
         <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
-          <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 12 }}>{filtered.length} záznamů</span>
+          <span style={{ background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)", border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.15)"}`, borderRadius: 7, padding: "4px 12px", color: T.text, fontSize: 13, fontWeight: 600 }}>{filtered.length} záznamů</span>
           <div style={{ position: "relative" }}>
-            <button onClick={() => setShowExport(v => !v)} style={{ padding: "7px 14px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#fff", cursor: "pointer", fontSize: 12 }}>⬇ Export ▾</button>
+            <button onClick={() => setShowExport(v => !v)} style={{ padding: "7px 14px", background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.15)"}`, borderRadius: 7, color: T.text, cursor: "pointer", fontSize: 12 }}>⬇ Export ▾</button>
             {showExport && (
-              <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, background: "#1e293b", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: 6, zIndex: 200, minWidth: 160, boxShadow: "0 12px 32px rgba(0,0,0,0.5)" }}>
-                <button onClick={exportCSV} style={{ display: "block", width: "100%", padding: "9px 14px", background: "none", border: "none", color: "#e2e8f0", cursor: "pointer", fontSize: 13, textAlign: "left", borderRadius: 6 }} onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.07)"} onMouseLeave={e => e.currentTarget.style.background = "none"}>📄 CSV (.csv)</button>
-                <button onClick={exportXLS} style={{ display: "block", width: "100%", padding: "9px 14px", background: "none", border: "none", color: "#e2e8f0", cursor: "pointer", fontSize: 13, textAlign: "left", borderRadius: 6 }} onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.07)"} onMouseLeave={e => e.currentTarget.style.background = "none"}>📊 Excel (.xlsx)</button>
-                <button onClick={exportPDF} style={{ display: "block", width: "100%", padding: "9px 14px", background: "none", border: "none", color: "#e2e8f0", cursor: "pointer", fontSize: 13, textAlign: "left", borderRadius: 6 }} onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.07)"} onMouseLeave={e => e.currentTarget.style.background = "none"}>🖨️ PDF (HTML → tisk)</button>
+              <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, background: isDark ? "#1e293b" : "#fff", border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`, borderRadius: 10, padding: 6, zIndex: 200, minWidth: 160, boxShadow: "0 12px 32px rgba(0,0,0,0.3)" }}>
+                <button onClick={exportCSV} style={{ display: "block", width: "100%", padding: "9px 14px", background: "none", border: "none", color: T.text, cursor: "pointer", fontSize: 13, textAlign: "left", borderRadius: 6 }} onMouseEnter={e => e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)"} onMouseLeave={e => e.currentTarget.style.background = "none"}>📄 CSV (.csv)</button>
+                <button onClick={exportXLS} style={{ display: "block", width: "100%", padding: "9px 14px", background: "none", border: "none", color: T.text, cursor: "pointer", fontSize: 13, textAlign: "left", borderRadius: 6 }} onMouseEnter={e => e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)"} onMouseLeave={e => e.currentTarget.style.background = "none"}>📊 Excel (.xlsx)</button>
+                <button onClick={exportPDF} style={{ display: "block", width: "100%", padding: "9px 14px", background: "none", border: "none", color: T.text, cursor: "pointer", fontSize: 13, textAlign: "left", borderRadius: 6 }} onMouseEnter={e => e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)"} onMouseLeave={e => e.currentTarget.style.background = "none"}>🖨️ PDF (HTML → tisk)</button>
               </div>
             )}
           </div>
@@ -1232,14 +1232,28 @@ export default function App() {
             {/* footer */}
             <div style={{ padding: "14px 24px", borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`, display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <button onClick={() => {
-                const existing = document.getElementById("deadline-print-style");
-                if (existing) existing.remove();
-                const style = document.createElement("style");
-                style.id = "deadline-print-style";
-                style.innerHTML = `.print-header { display: block !important; } @media print { body * { visibility: hidden; } #deadline-print-area, #deadline-print-area * { visibility: visible; } #deadline-print-area { position: fixed; top: 0; left: 0; width: 100%; } }`;
-                document.head.appendChild(style);
-                window.print();
-                setTimeout(() => { const s = document.getElementById("deadline-print-style"); if (s) s.remove(); }, 1000);
+                const rows = deadlineWarnings.map(r => {
+                  const urgentColor = r.dniDo <= 5 ? "#dc2626" : r.dniDo <= 15 ? "#ea580c" : "#ca8a04";
+                  return `<tr>
+                    <td>${r.cislo_stavby}</td>
+                    <td>${r.nazev_stavby}</td>
+                    <td>${r.ukonceni}</td>
+                    <td style="color:${urgentColor};font-weight:700">${r.dniDo} dní</td>
+                    <td>${r.objednatel || ""}</td>
+                    <td>${r.stavbyvedouci || ""}</td>
+                  </tr>`;
+                }).join("");
+                const w = window.open("", "_blank");
+                w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Blížící se termíny</title>
+                <style>body{font-family:'Segoe UI',sans-serif;padding:24px;color:#1e293b}h2{margin:0 0 4px}p{margin:0 0 16px;color:#64748b;font-size:13px}table{width:100%;border-collapse:collapse;font-size:13px}th{background:#1e3a8a;color:#fff;padding:8px 12px;text-align:left}td{padding:8px 12px;border-bottom:1px solid #e2e8f0}tr:nth-child(even){background:#f8fafc}@media print{button{display:none}}</style>
+                </head><body>
+                <h2>⚠️ Stavby Znojmo – Blížící se termíny ukončení</h2>
+                <p>Vygenerováno: ${new Date().toLocaleDateString("cs-CZ")} &nbsp;|&nbsp; Zakázky s termínem do 30 pracovních dní (${deadlineWarnings.length} zakázek)</p>
+                <table><thead><tr><th>Č. stavby</th><th>Název stavby</th><th>Termín ukončení</th><th>Dní do termínu</th><th>Objednatel</th><th>Stavbyvedoucí</th></tr></thead>
+                <tbody>${rows}</tbody></table>
+                <br><button onclick="window.print()">🖨️ Tisk / PDF</button>
+                </body></html>`);
+                w.document.close();
               }} style={{ padding: "9px 18px", background: "linear-gradient(135deg,#2563eb,#1d4ed8)", border: "none", borderRadius: 8, color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>🖨️ Tisk / PDF</button>
               <button onClick={() => setShowDeadlines(false)} style={{ padding: "9px 18px", background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`, borderRadius: 8, color: isDark ? "#fff" : "#1e293b", cursor: "pointer", fontSize: 13 }}>Zavřít</button>
             </div>
