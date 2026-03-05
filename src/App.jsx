@@ -4,8 +4,8 @@ import * as XLSX from "xlsx";
 // ============================================================
 // SUPABASE CONFIG
 // ============================================================
-const SB_URL = "https://cleifbyyhpbdjbrgzrkv.supabase.co";
-const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsZWlmYnl5aHBiZGpicmd6cmt2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzOTkxMjcsImV4cCI6MjA4Nzk3NTEyN30.f3Kc4JHMSishVJJLmLq9kj7lcvF2gMb8uc0Lr-oZEIE";
+const SB_URL = import.meta.env.VITE_SB_URL;
+const SB_KEY = import.meta.env.VITE_SB_KEY;
 
 const sb = async (path, options = {}) => {
   const res = await fetch(`${SB_URL}/rest/v1/${path}`, {
