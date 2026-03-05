@@ -733,23 +733,27 @@ export default function App() {
   const headerRef = useRef(null);
   const cardsRef = useRef(null);
   const filtersRef = useRef(null);
-  const paginationRef = useRef(null);
 
   const [PAGE_SIZE, setPageSize] = useState(10);
   useEffect(() => {
     const calc = () => {
       const rowH = 36;
+      const theadH = 36;
+      const paginationH = 44;
       const headerH = headerRef.current?.offsetHeight || 52;
       const cardsH = cardsRef.current?.offsetHeight || 105;
       const filtersH = filtersRef.current?.offsetHeight || 52;
-      const paginationH = paginationRef.current?.offsetHeight || 44;
-      const reserved = headerH + cardsH + filtersH + paginationH + 8;
+      const reserved = headerH + cardsH + filtersH + theadH + paginationH + 4;
       const rows = Math.max(5, Math.floor((window.innerHeight - reserved) / rowH));
       setPageSize(rows);
     };
-    const timer = setTimeout(calc, 100);
+    const timer = setTimeout(calc, 200);
+    const ro = new ResizeObserver(calc);
+    if (headerRef.current) ro.observe(headerRef.current);
+    if (cardsRef.current) ro.observe(cardsRef.current);
+    if (filtersRef.current) ro.observe(filtersRef.current);
     window.addEventListener("resize", calc);
-    return () => { clearTimeout(timer); window.removeEventListener("resize", calc); };
+    return () => { clearTimeout(timer); ro.disconnect(); window.removeEventListener("resize", calc); };
   }, []);
   const [page, setPage] = useState(0);
   useEffect(() => { setPage(0); }, [filterFirma, filterText, filterObjed]);
@@ -1000,7 +1004,7 @@ export default function App() {
       </div>
 
       {totalPages > 1 && (
-        <div ref={paginationRef} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 18px", borderTop: `1px solid ${T.cellBorder}`, background: T.filterBg }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 18px", borderTop: `1px solid ${T.cellBorder}`, background: T.filterBg }}>
           <button onClick={() => setPage(0)} disabled={page === 0} style={{ padding: "4px 9px", background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 6, color: T.textMuted, cursor: page === 0 ? "default" : "pointer", opacity: page === 0 ? 0.4 : 1, fontSize: 13 }}>«</button>
           <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} style={{ padding: "4px 9px", background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 6, color: T.textMuted, cursor: page === 0 ? "default" : "pointer", opacity: page === 0 ? 0.4 : 1, fontSize: 13 }}>‹</button>
           {Array.from({ length: totalPages }, (_, i) => (
