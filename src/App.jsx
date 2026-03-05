@@ -999,6 +999,12 @@ export default function App() {
               </tr>
               );
             })}
+            {paginated.length < PAGE_SIZE && Array.from({ length: PAGE_SIZE - paginated.length }).map((_, i) => (
+              <tr key={`empty-${i}`} style={{ height: 36 }}>
+                {COLUMNS.map(col => <td key={col.key} style={{ border: `1px solid ${T.cellBorder}` }} />)}
+                {isAdmin && <td style={{ border: `1px solid ${T.cellBorder}` }} />}
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
