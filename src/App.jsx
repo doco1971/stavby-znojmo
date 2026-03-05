@@ -167,10 +167,10 @@ function SummaryCards({ data, firmy, isDark, firmaColors }) {
   return (
     <div style={{ overflowX: "auto", background: bg, padding: "14px 18px" }}>
       <div style={{ display: "grid", gridTemplateColumns: `repeat(${firmy.length * 3 + 1}, minmax(140px, 1fr))`, gap: 10, minWidth: (firmy.length * 3 + 1) * 150 }}>
-        <div style={{ background: isDark ? "linear-gradient(135deg,#2563eb22,#6366f10a)" : "#2563eb18", border: "1px solid #2563eb44", borderLeft: "3px solid #2563eb", borderRight: "3px solid #2563eb", borderRadius: 10, padding: "12px 14px" }}>
+        <div style={{ background: isDark ? "linear-gradient(135deg,#2563eb22,#6366f10a)" : "#2563eb18", border: "1px solid #2563eb44", borderLeft: "3px solid #2563eb", borderRight: "3px solid #2563eb", borderRadius: 10, padding: "12px 14px", textAlign: "center" }}>
           <div style={{ color: textMuted, fontSize: 10, fontWeight: 600, marginBottom: 5 }}>CELKEM VŠE</div>
           <div style={{ color: textMain, fontSize: 15, fontWeight: 800 }}>{fmt(totalCelkem)}</div>
-          <div style={{ marginTop: 6, display: "flex", gap: 10 }}>
+          <div style={{ marginTop: 6, display: "flex", gap: 10, justifyContent: "center" }}>
             <div style={{ color: textMuted, fontSize: 10 }}>Kat. I: <span style={{ color: textMain, fontWeight: 600 }}>{fmt(totalI)}</span></div>
             <div style={{ color: textMuted, fontSize: 10 }}>Kat. II: <span style={{ color: textMain, fontWeight: 600 }}>{fmt(totalII)}</span></div>
           </div>
@@ -181,15 +181,15 @@ function SummaryCards({ data, firmy, isDark, firmaColors }) {
           const katII = sum(firma, ["ps_ii","bo_ii","poruch"]);
           const celkem = katI + katII;
           return [
-            <div key={`${firma}-I`} style={{ background: cardBg, border: `1px solid ${color}33`, borderLeft: `3px solid ${color}`, borderRight: `3px solid ${color}`, borderRadius: 10, padding: "12px 14px" }}>
+            <div key={`${firma}-I`} style={{ background: cardBg, border: `1px solid ${color}33`, borderLeft: `3px solid ${color}`, borderRight: `3px solid ${color}`, borderRadius: 10, padding: "12px 14px", textAlign: "center" }}>
               <div style={{ color: textMuted, fontSize: 10, fontWeight: 600, marginBottom: 5 }}>{firma} – Kat. I</div>
               <div style={{ color: textMain, fontSize: 13, fontWeight: 700 }}>{fmt(katI)}</div>
             </div>,
-            <div key={`${firma}-II`} style={{ background: cardBg, border: `1px solid ${color}33`, borderLeft: `3px solid ${color}`, borderRight: `3px solid ${color}`, borderRadius: 10, padding: "12px 14px" }}>
+            <div key={`${firma}-II`} style={{ background: cardBg, border: `1px solid ${color}33`, borderLeft: `3px solid ${color}`, borderRight: `3px solid ${color}`, borderRadius: 10, padding: "12px 14px", textAlign: "center" }}>
               <div style={{ color: textMuted, fontSize: 10, fontWeight: 600, marginBottom: 5 }}>{firma} – Kat. II</div>
               <div style={{ color: textMain, fontSize: 13, fontWeight: 700 }}>{fmt(katII)}</div>
             </div>,
-            <div key={`${firma}-C`} style={{ background: isDark ? `linear-gradient(135deg,${color}22,${color}0a)` : `${color}18`, border: `1px solid ${color}44`, borderLeft: `3px solid ${color}`, borderRight: `3px solid ${color}`, borderRadius: 10, padding: "12px 14px" }}>
+            <div key={`${firma}-C`} style={{ background: isDark ? `linear-gradient(135deg,${color}22,${color}0a)` : `${color}18`, border: `1px solid ${color}44`, borderLeft: `3px solid ${color}`, borderRight: `3px solid ${color}`, borderRadius: 10, padding: "12px 14px", textAlign: "center" }}>
               <div style={{ color: textMuted, fontSize: 10, fontWeight: 600, marginBottom: 5 }}>Celkem {firma}</div>
               <div style={{ color: textMain, fontSize: 15, fontWeight: 800 }}>{fmt(celkem)}</div>
             </div>,
@@ -444,8 +444,8 @@ function SettingsModal({ firmy, objednatele, stavbyvedouci, users, onChange, onC
   const removeUser = (id) => setUList(uList.filter(u => u.id !== id));
 
   const handleLoadLog = async () => {
-    const data = await onLoadLog();
-    setLocalLogData(data || []);
+    const res = await onLoadLog();
+    setLocalLogData(Array.isArray(res) ? res : []);
   };
 
   useEffect(() => { if (tab === "log") handleLoadLog(); }, [tab]);
@@ -621,7 +621,7 @@ export default function App() {
 
   const loadLog = useCallback(async () => {
     try {
-      const res = await sb("log_aktivit?order=cas.desc&limit=200");
+      const res = await sb("log_aktivit?order=cas.desc&limit=1000");
       setLogData(res);
       return res;
     } catch (e) { console.warn("Log load error:", e); return []; }
@@ -1013,8 +1013,8 @@ export default function App() {
               >
                 {isAdmin && (
                   <td style={{ padding: "7px 11px", whiteSpace: "nowrap", border: `1px solid ${T.cellBorder}`, textAlign: "center" }}>
-                    <button onClick={() => setEditRow(row)} style={{ padding: "3px 9px", background: "rgba(37,99,235,0.2)", border: "1px solid rgba(37,99,235,0.3)", borderRadius: 5, color: "#60a5fa", cursor: "pointer", fontSize: 11, marginRight: 5 }}>✏️</button>
-                    <button onClick={() => setDeleteConfirm({ id: row.id, step: 1 })} style={{ padding: "3px 9px", background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 5, color: "#f87171", cursor: "pointer", fontSize: 11 }}>🗑️</button>
+                    <button onClick={() => setDeleteConfirm({ id: row.id, step: 1 })} style={{ padding: "3px 9px", background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 5, color: "#f87171", cursor: "pointer", fontSize: 11, marginRight: 5 }}>🗑️</button>
+                    <button onClick={() => setEditRow(row)} style={{ padding: "3px 9px", background: "rgba(37,99,235,0.2)", border: "1px solid rgba(37,99,235,0.3)", borderRadius: 5, color: "#60a5fa", cursor: "pointer", fontSize: 11 }}>✏️</button>
                   </td>
                 )}
                 {COLUMNS.map(col => {
