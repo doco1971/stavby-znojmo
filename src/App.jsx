@@ -1083,7 +1083,15 @@ export default function App() {
 
       {/* TABLE */}
       <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, minWidth: 2100 }}>
+        <table style={{ borderCollapse: "collapse", fontSize: 12.5, tableLayout: "fixed", width: "max-content" }}>
+          <colgroup>
+            <col style={{ width: 40 }} />
+            {isAdmin && <col style={{ width: 90 }} />}
+            {COLUMNS.filter(col => col.key !== "id").map(col => (
+              <col key={col.key} style={{ width: getColWidth(col) }} />
+            ))}
+            {isAdmin && <col style={{ width: 120 }} />}
+          </colgroup>
           <thead>
             <tr style={{ background: T.theadBg }}>
               <th style={{ padding: "9px 11px", textAlign: "center", color: T.textMuted, fontWeight: 700, fontSize: 10.5, letterSpacing: 0.4, whiteSpace: "nowrap", minWidth: 40, position: "sticky", top: 0, background: T.theadBg, zIndex: 10, border: `1px solid ${T.cellBorder}` }}>#</th>
@@ -1097,17 +1105,17 @@ export default function App() {
                         ? <input
                             autoFocus
                             type="number"
-                            defaultValue={getColWidth(col)}
+                            defaultValue={Math.round(getColWidth(col))}
                             onBlur={e => { const w = Math.max(40, parseInt(e.target.value)||40); setColWidths(prev => { const n = {...prev, [col.key]: w}; saveColWidths(n); return n; }); setEditingColWidth(null); }}
                             onKeyDown={e => { if (e.key === "Enter") e.target.blur(); if (e.key === "Escape") setEditingColWidth(null); }}
-                            style={{ width: 50, fontSize: 10, padding: "1px 3px", background: "#1e3a8a", color: "#fff", border: "1px solid #60a5fa", borderRadius: 3 }}
+                            style={{ width: 55, fontSize: 10, padding: "1px 3px", background: "#1e3a8a", color: "#fff", border: "1px solid #60a5fa", borderRadius: 3 }}
                             onClick={e => e.stopPropagation()}
                           />
                         : <span
                             onMouseDown={e => startDrag(e, col.key, getColWidth(col))}
                             onClick={e => { e.stopPropagation(); setEditingColWidth(col.key); }}
-                            style={{ cursor: "col-resize", color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.3)", fontSize: 14, padding: "0 4px", userSelect: "none", flexShrink: 0, display: "inline-block" }}
-                            title="Táhni = resize | Klik = zadat číslo"
+                            style={{ cursor: "col-resize", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.4)", fontSize: 14, padding: "0 4px", userSelect: "none", flexShrink: 0, display: "inline-block" }}
+                            title={`Táhni = resize | Klik = zadat šířku (nyní: ${Math.round(getColWidth(col))}px)`}
                           >⟺</span>
                     )}
                   </div>
