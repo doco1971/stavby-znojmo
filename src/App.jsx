@@ -449,7 +449,7 @@ function FirmyEditor({ list, setList, isDark }) {
   );
 }
 
-function SettingsModal({ firmy, objednatele, stavbyvedouci, users, onChange, onChangeUsers, onClose, onLoadLog, isAdmin, isSuperAdmin, isDark }) {
+function SettingsModal({ firmy, objednatele, stavbyvedouci, users, onChange, onChangeUsers, onClose, onLoadLog, isAdmin, isSuperAdmin, isDark, appVerze, appDatum, onSaveAppInfo }) {
   const [tab, setTab] = useState("ciselniky");
   const [f, setF] = useState([...firmy]);
   const [o, setO] = useState([...objednatele]);
@@ -506,7 +506,10 @@ function SettingsModal({ firmy, objednatele, stavbyvedouci, users, onChange, onC
     { key: "ciselniky", label: "📋 Číselníky" },
     { key: "uzivatele", label: "👥 Uživatelé" },
     ...(isAdmin ? [{ key: "log", label: "📜 Log aktivit" }] : []),
+    ...(isSuperAdmin ? [{ key: "aplikace", label: "⚙️ Aplikace" }] : []),
   ];
+  const [editVerze, setEditVerze] = useState(appVerze);
+  const [editDatum, setEditDatum] = useState(appDatum);
 
   const modalBg = isDark ? "#1e293b" : "#ffffff";
   const modalBorder = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)";
@@ -643,7 +646,27 @@ function SettingsModal({ firmy, objednatele, stavbyvedouci, users, onChange, onC
         {/* footer */}
         <div style={{ padding: "14px 24px", borderTop: `1px solid ${modalDivider}`, display: "flex", gap: 10, justifyContent: "flex-end", background: modalBg }}>
           <button onClick={onClose} style={{ padding: "9px 18px", background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)", border: `1px solid ${modalBorder}`, borderRadius: 8, color: modalText, cursor: "pointer", fontSize: 13 }}>Zrušit</button>
-          {tab !== "log" && <button onClick={() => { onChange(f, o, s); onChangeUsers(uList); onClose(); }} style={{ padding: "9px 22px", background: "linear-gradient(135deg,#16a34a,#15803d)", border: "none", borderRadius: 8, color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Uložit vše</button>}
+          {tab === "aplikace" && isSuperAdmin && (
+            <div style={{ padding: "10px 0" }}>
+              <div style={{ color: modalMuted, fontSize: 11, fontWeight: 700, letterSpacing: 1, marginBottom: 20 }}>INFORMACE O APLIKACI</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 360 }}>
+                <div>
+                  <div style={{ color: modalMuted, fontSize: 11, marginBottom: 6 }}>VERZE APLIKACE</div>
+                  <input value={editVerze} onChange={e => setEditVerze(e.target.value)} placeholder="např. 1.0.0" style={{ width: "100%", padding: "9px 12px", background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)", border: `1px solid ${modalBorder}`, borderRadius: 8, color: modalText, fontSize: 14, boxSizing: "border-box" }}/>
+                </div>
+                <div>
+                  <div style={{ color: modalMuted, fontSize: 11, marginBottom: 6 }}>ROK / DATUM</div>
+                  <input value={editDatum} onChange={e => setEditDatum(e.target.value)} placeholder="např. 2025" style={{ width: "100%", padding: "9px 12px", background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)", border: `1px solid ${modalBorder}`, borderRadius: 8, color: modalText, fontSize: 14, boxSizing: "border-box" }}/>
+                </div>
+                <button onClick={() => { onSaveAppInfo(editVerze, editDatum); onClose(); }} style={{ padding: "10px 20px", background: "linear-gradient(135deg,#7c3aed,#6d28d9)", border: "none", borderRadius: 8, color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>💾 Uložit a zavřít</button>
+                <div style={{ color: modalMuted, fontSize: 11, marginTop: 8 }}>
+                  Zobrazí se ve footeru: © {editDatum} Stavby Znojmo – Martin Dočekal &amp; Claude AI | v{editVerze}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {tab !== "log" && tab !== "aplikace" && <button onClick={() => { onChange(f, o, s); onChangeUsers(uList); onClose(); }} style={{ padding: "9px 22px", background: "linear-gradient(135deg,#16a34a,#15803d)", border: "none", borderRadius: 8, color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Uložit vše</button>}
         </div>
       </div>
     </div>
@@ -694,6 +717,28 @@ export default function App() {
 
   // ── Šířky sloupců (jen superadmin) ─────────────────────────
   const [colWidths, setColWidths] = useState({});
+  const [appVerze, setAppVerze] = useState("1.0");
+  const [appDatum, setAppDatum] = useState("2025");
+
+  useEffect(() => {
+    sb("nastaveni?klic=eq.app_info").then(res => {
+      if (res && res[0]) {
+        try {
+          const info = JSON.parse(res[0].hodnota);
+          if (info.verze) setAppVerze(info.verze);
+          if (info.datum) setAppDatum(info.datum);
+        } catch {}
+      }
+    }).catch(() => {});
+  }, []);
+
+  const saveAppInfo = async (verze, datum) => {
+    try {
+      await sb("nastaveni", { method: "POST", body: JSON.stringify({ klic: "app_info", hodnota: JSON.stringify({ verze, datum }) }), prefer: "resolution=merge-duplicates,return=minimal" });
+      setAppVerze(verze);
+      setAppDatum(datum);
+    } catch {}
+  };
   const dragInfo = useRef(null);
 
   useEffect(() => {
@@ -1243,7 +1288,7 @@ export default function App() {
       )}
 
       <div style={{ textAlign: "center", padding: "6px", borderTop: `1px solid ${T.cellBorder}`, color: T.textFaint, fontSize: 11 }}>
-        © {new Date().getFullYear()} Stavby Znojmo – Martin Dočekal &amp; Claude AI
+        © {appDatum} Stavby Znojmo – Martin Dočekal &amp; Claude AI &nbsp;|&nbsp; v{appVerze}
       </div>
 
       {/* EXPORT PREVIEW - sdílená tabulka pro CSV a XLS */}
@@ -1356,7 +1401,7 @@ export default function App() {
       )}
       {adding && <FormModal title="➕ Nová stavba" initial={emptyRow} onSave={handleAdd} onClose={() => setAdding(false)} firmy={firmy.map(f => f.hodnota)} objednatele={objednatele} stavbyvedouci={stavbyvedouci} />}
       {editRow && <FormModal title={`✏️ Editace stavby #${editRow.id}`} initial={editRow} onSave={handleSave} onClose={() => setEditRow(null)} firmy={firmy.map(f => f.hodnota)} objednatele={objednatele} stavbyvedouci={stavbyvedouci} />}
-      {showSettings && <SettingsModal firmy={firmy} objednatele={objednatele} stavbyvedouci={stavbyvedouci} users={users} onChange={saveSettings} onChangeUsers={saveUsers} onClose={() => setShowSettings(false)} onLoadLog={loadLog} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} isDark={isDark} />}
+      {showSettings && <SettingsModal firmy={firmy} objednatele={objednatele} stavbyvedouci={stavbyvedouci} users={users} onChange={saveSettings} onChangeUsers={saveUsers} onClose={() => setShowSettings(false)} onLoadLog={loadLog} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} isDark={isDark} appVerze={appVerze} appDatum={appDatum} onSaveAppInfo={saveAppInfo} />}
 
       {showDeadlines && deadlineWarnings.length > 0 && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Segoe UI',sans-serif" }}>
