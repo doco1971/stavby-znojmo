@@ -658,6 +658,53 @@ export default function App() {
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
+  // ── Upozornění na blížící se termíny ──────────────────────
+  const [deadlineWarnings, setDeadlineWarnings] = useState([]);
+  const [showDeadlines, setShowDeadlines] = useState(false);
+
+  const pracovniDny = (from, to) => {
+    let count = 0;
+    const d = new Date(from);
+    d.setHours(0,0,0,0);
+    const end = new Date(to);
+    end.setHours(0,0,0,0);
+    while (d < end) {
+      d.setDate(d.getDate() + 1);
+      const day = d.getDay();
+      if (day !== 0 && day !== 6) count++;
+    }
+    return count;
+  };
+
+  const parseDatum = (s) => {
+    if (!s) return null;
+    const parts = s.trim().split(".");
+    if (parts.length !== 3) return null;
+    const d = new Date(`${parts[2]}-${parts[1].padStart(2,"0")}-${parts[0].padStart(2,"0")}`);
+    return isNaN(d) ? null : d;
+  };
+
+  useEffect(() => {
+    if (!data.length) return;
+    const dnes = new Date();
+    dnes.setHours(0,0,0,0);
+    const warnings = data
+      .filter(r => r.ukonceni)
+      .map(r => {
+        const datum = parseDatum(r.ukonceni);
+        if (!datum || datum < dnes) return null;
+        const dni = pracovniDny(dnes, datum);
+        if (dni > 30) return null;
+        return { ...r, dniDo: dni, datumUkonceni: datum };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.dniDo - b.dniDo);
+    if (warnings.length > 0) {
+      setDeadlineWarnings(warnings);
+      setShowDeadlines(true);
+    }
+  }, [data]);
+
   useEffect(() => {
     const dark = isDarkComputed(theme);
     document.body.style.background = dark ? "#0f172a" : "#f1f5f9";
@@ -1136,6 +1183,66 @@ export default function App() {
       {adding && <FormModal title="➕ Nová stavba" initial={emptyRow} onSave={handleAdd} onClose={() => setAdding(false)} firmy={firmy.map(f => f.hodnota)} objednatele={objednatele} stavbyvedouci={stavbyvedouci} />}
       {editRow && <FormModal title={`✏️ Editace stavby #${editRow.id}`} initial={editRow} onSave={handleSave} onClose={() => setEditRow(null)} firmy={firmy.map(f => f.hodnota)} objednatele={objednatele} stavbyvedouci={stavbyvedouci} />}
       {showSettings && <SettingsModal firmy={firmy} objednatele={objednatele} stavbyvedouci={stavbyvedouci} users={users} onChange={saveSettings} onChangeUsers={saveUsers} onClose={() => setShowSettings(false)} onLoadLog={loadLog} isAdmin={isAdmin} isDark={isDark} />}
+
+      {showDeadlines && deadlineWarnings.length > 0 && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Segoe UI',sans-serif" }}>
+          <div style={{ background: isDark ? "#1e293b" : "#fff", borderRadius: 16, width: 820, maxHeight: "85vh", display: "flex", flexDirection: "column", border: "1px solid rgba(239,68,68,0.4)", boxShadow: "0 32px 80px rgba(0,0,0,0.7)" }}>
+            {/* header */}
+            <div style={{ padding: "18px 24px", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`, display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(239,68,68,0.1)", borderRadius: "16px 16px 0 0" }}>
+              <div>
+                <h3 style={{ color: "#f87171", margin: 0, fontSize: 17 }}>⚠️ Blížící se termíny ukončení</h3>
+                <div style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.5)", fontSize: 12, marginTop: 4 }}>{deadlineWarnings.length} zakázek s termínem do 30 pracovních dní</div>
+              </div>
+              <button onClick={() => setShowDeadlines(false)} style={{ background: "none", border: "none", color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)", fontSize: 20, cursor: "pointer" }}>✕</button>
+            </div>
+            {/* tabulka */}
+            <div style={{ overflowY: "auto", flex: 1, padding: 24 }} id="deadline-print-area">
+              <div style={{ marginBottom: 16, display: "none" }} className="print-header">
+                <div style={{ fontWeight: 800, fontSize: 18 }}>Stavby Znojmo – Blížící se termíny</div>
+                <div style={{ fontSize: 12, color: "#64748b" }}>Vygenerováno: {new Date().toLocaleDateString("cs-CZ")} | Zakázky s termínem do 30 pracovních dní</div>
+                <hr style={{ margin: "8px 0" }} />
+              </div>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: isDark ? "#1a2744" : "#e2e8f0" }}>
+                    {["Č. stavby","Název stavby","Termín ukončení","Dní do termínu","Objednatel","Stavbyvedoucí"].map(h => (
+                      <th key={h} style={{ padding: "8px 12px", textAlign: "left", color: isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.6)", fontWeight: 700, fontSize: 11, borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`, whiteSpace: "nowrap" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {deadlineWarnings.map((r, i) => {
+                    const urgentColor = r.dniDo <= 5 ? "#f87171" : r.dniDo <= 15 ? "#fb923c" : "#facc15";
+                    return (
+                      <tr key={r.id} style={{ background: i % 2 === 0 ? (isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)") : "transparent" }}>
+                        <td style={{ padding: "8px 12px", color: isDark ? "#e2e8f0" : "#1e293b", fontWeight: 600, whiteSpace: "nowrap", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}` }}>{r.cislo_stavby}</td>
+                        <td style={{ padding: "8px 12px", color: isDark ? "#e2e8f0" : "#1e293b", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}` }}>{r.nazev_stavby}</td>
+                        <td style={{ padding: "8px 12px", color: isDark ? "#e2e8f0" : "#1e293b", whiteSpace: "nowrap", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}` }}>{r.ukonceni}</td>
+                        <td style={{ padding: "8px 12px", whiteSpace: "nowrap", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}` }}>
+                          <span style={{ background: urgentColor + "22", color: urgentColor, border: `1px solid ${urgentColor}44`, borderRadius: 5, padding: "2px 8px", fontSize: 12, fontWeight: 700 }}>{r.dniDo} dní</span>
+                        </td>
+                        <td style={{ padding: "8px 12px", color: isDark ? "#e2e8f0" : "#1e293b", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}` }}>{r.objednatel}</td>
+                        <td style={{ padding: "8px 12px", color: isDark ? "#e2e8f0" : "#1e293b", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}` }}>{r.stavbyvedouci}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {/* footer */}
+            <div style={{ padding: "14px 24px", borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`, display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button onClick={() => {
+                const style = document.createElement("style");
+                style.innerHTML = `.print-header { display: block !important; } @media print { body * { visibility: hidden; } #deadline-print-area, #deadline-print-area * { visibility: visible; } #deadline-print-area { position: fixed; top: 0; left: 0; width: 100%; } }`;
+                document.head.appendChild(style);
+                window.print();
+                setTimeout(() => document.head.removeChild(style), 1000);
+              }} style={{ padding: "9px 18px", background: "linear-gradient(135deg,#2563eb,#1d4ed8)", border: "none", borderRadius: 8, color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>🖨️ Tisk / PDF</button>
+              <button onClick={() => setShowDeadlines(false)} style={{ padding: "9px 18px", background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`, borderRadius: 8, color: isDark ? "#fff" : "#1e293b", cursor: "pointer", fontSize: 13 }}>Zavřít</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {deleteConfirm && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
