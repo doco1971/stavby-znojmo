@@ -1107,14 +1107,14 @@ export default function App() {
 
       {/* HEADER */}
       <div ref={headerRef} style={{ background: T.headerBg, borderBottom: `1px solid ${T.headerBorder}`, padding: "11px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <svg width="32" height="32" viewBox="0 0 80 80" fill="none">
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <svg width="46" height="46" viewBox="0 0 80 80" fill="none">
             <circle cx="40" cy="40" r="38" fill="#1e3a8a" />
             <polygon points="47,10 30,42 40,42 33,68 52,36 42,36" fill="#facc15" />
           </svg>
           <div>
-            <div style={{ fontWeight: 800, fontSize: 18 }}>Stavby Znojmo</div>
-            <div style={{ color: T.textMuted, fontSize: 13 }}>kategorie 1 & 2 <span style={{ marginLeft: 8, color: T.textFaint, fontSize: 11 }}>v1.1 | 05.03.2026</span></div>
+            <div style={{ fontWeight: 800, fontSize: 22 }}>Stavby Znojmo</div>
+            <div style={{ color: T.textMuted, fontSize: 14 }}>kategorie 1 & 2</div>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
