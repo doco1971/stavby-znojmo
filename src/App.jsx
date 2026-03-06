@@ -608,6 +608,15 @@ function SettingsModal({ firmy, objednatele, stavbyvedouci, users, onChange, onC
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   <span style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.5)", fontSize: 12 }}>{localLogFiltered.length} záznamů</span>
                   <button onClick={handleLoadLog} style={{ padding: "5px 12px", background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`, borderRadius: 6, color: isDark ? "#fff" : "#1e293b", cursor: "pointer", fontSize: 12 }}>🔄 Obnovit</button>
+                  <button onClick={() => {
+                    const wb = XLSX.utils.book_new();
+                    const ws = XLSX.utils.aoa_to_sheet([
+                      ["Čas", "Uživatel", "Akce", "Detail"],
+                      ...localLogFiltered.map(r => [r.cas ? new Date(r.cas).toLocaleString("cs-CZ") : "", r.uzivatel, r.akce, r.detail])
+                    ]);
+                    XLSX.utils.book_append_sheet(wb, ws, "Log");
+                    XLSX.writeFile(wb, `log_aktivit_${new Date().toISOString().slice(0,10)}.xlsx`);
+                  }} style={{ padding: "5px 12px", background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`, borderRadius: 6, color: isDark ? "#fff" : "#1e293b", cursor: "pointer", fontSize: 12 }}>📥 Export Excel</button>
                 </div>
               </div>
               <div style={{ overflowY: "auto", maxHeight: 400 }}>
