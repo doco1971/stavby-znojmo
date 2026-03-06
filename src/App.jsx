@@ -454,6 +454,7 @@ function SettingsModal({ firmy, objednatele, stavbyvedouci, users, onChange, onC
   const [newF, setNewF] = useState("");
   const [newO, setNewO] = useState("");
   const [newS, setNewS] = useState("");
+  const [pendingWarn, setPendingWarn] = useState(null);
   const [localLogData, setLocalLogData] = useState([]);
   const [logFilterUser, setLogFilterUser] = useState("");
   const [logFilterAkce, setLogFilterAkce] = useState("");
@@ -696,9 +697,43 @@ function SettingsModal({ firmy, objednatele, stavbyvedouci, users, onChange, onC
             </div>
           )}
 
-          {tab !== "log" && tab !== "aplikace" && <button onClick={() => { onChange(f, o, s); onChangeUsers(uList); onClose(); }} style={{ padding: "9px 22px", background: "linear-gradient(135deg,#16a34a,#15803d)", border: "none", borderRadius: 8, color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Uložit vše</button>}
+          {tab !== "log" && tab !== "aplikace" && <button onClick={() => {
+            // Kontrola nevyplněných polí
+            const unfinished = [];
+            if (tab === "ciselniky") {
+              if (newF.trim()) unfinished.push("Firma");
+              if (newO.trim()) unfinished.push("Objednatel");
+              if (newS.trim()) unfinished.push("Stavbyvedoucí");
+            }
+            if (tab === "uzivatele") {
+              if (newEmail.trim() || newPass.trim() || newName?.trim()) unfinished.push("Uživatel");
+            }
+            if (unfinished.length > 0) {
+              setPendingWarn(unfinished);
+            } else {
+              onChange(f, o, s); onChangeUsers(uList); onClose();
+            }
+          }} style={{ padding: "9px 22px", background: "linear-gradient(135deg,#16a34a,#15803d)", border: "none", borderRadius: 8, color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Uložit vše</button>}
         </div>
       </div>
+
+      {/* Varování – nevyplněná položka */}
+      {pendingWarn && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 1400, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Segoe UI',sans-serif" }}>
+          <div style={{ background: isDark ? "#1e293b" : "#fff", borderRadius: 14, padding: "28px 32px", width: 380, border: `1px solid ${isDark ? "rgba(255,165,0,0.3)" : "rgba(255,165,0,0.4)"}`, boxShadow: "0 24px 60px rgba(0,0,0,0.5)", textAlign: "center" }}>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>⚠️</div>
+            <div style={{ color: isDark ? "#f8fafc" : "#1e293b", fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Nevyplněná položka</div>
+            <div style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)", fontSize: 13, marginBottom: 24 }}>
+              Máš rozepsanou položku <strong>{pendingWarn.join(", ")}</strong> která nebyla přidána.<br/>
+              <span style={{ fontSize: 12, marginTop: 6, display: "block" }}>Chceš ji zahodit a uložit bez ní?</span>
+            </div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              <button onClick={() => setPendingWarn(null)} style={{ padding: "9px 20px", background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`, borderRadius: 8, color: isDark ? "#fff" : "#1e293b", cursor: "pointer", fontSize: 13 }}>← Zpět doplnit</button>
+              <button onClick={() => { setPendingWarn(null); onChange(f, o, s); onChangeUsers(uList); onClose(); }} style={{ padding: "9px 20px", background: "linear-gradient(135deg,#dc2626,#b91c1c)", border: "none", borderRadius: 8, color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Zahodit a uložit</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
