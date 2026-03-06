@@ -354,15 +354,16 @@ function FormModal({ title, initial, onSave, onClose, firmy, objednatele, stavby
               <FormField label="Vyfakturováno" value={form["vyfakturovano"]} onChange={v => set("vyfakturovano", v)} type="number" />
               <FormField label="Ukončení" value={form["ukonceni"]} onChange={v => set("ukonceni", v)} type="date" />
               <FormField label="Zrealizováno" value={form["zrealizovano"]} onChange={v => set("zrealizovano", v)} type="number" />
-              <div style={{ background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.25)", borderRadius: 8, padding: "8px 14px", display: "flex", flexDirection: "column", gap: 4, justifyContent: "center" }}>
+
+              <div style={{ background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.25)", borderRadius: 8, padding: "8px 14px", display: "flex", gap: 20, alignItems: "center" }}>
                 <div><span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>Nabídka: </span><span style={{ color: "#60a5fa", fontWeight: 700, fontSize: 13 }}>{fmt(computed.nabidka)}</span></div>
                 <div><span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>Rozdíl: </span><span style={{ color: computed.rozdil >= 0 ? "#4ade80" : "#f87171", fontWeight: 700, fontSize: 13 }}>{fmt(computed.rozdil)}</span></div>
               </div>
               <FormField label="Nabídková cena" value={form["nabidkova_cena"]} onChange={v => set("nabidkova_cena", v)} type="number" />
               <FormField label="Číslo faktury" value={form["cislo_faktury"]} onChange={v => set("cislo_faktury", v)} />
               <FormField label="Částka bez DPH" value={form["castka_bez_dph"]} onChange={v => set("castka_bez_dph", v)} type="number" />
+
               <FormField label="Splatná" value={form["splatna"]} onChange={v => set("splatna", v)} type="date" />
-              <div />
               <FormField label="Číslo faktury 2" value={form["cislo_faktury_2"]} onChange={v => set("cislo_faktury_2", v)} />
               <FormField label="Částka bez DPH 2" value={form["bez_dph_2"]} onChange={v => set("bez_dph_2", v)} type="number" />
               <FormField label="Splatná 2" value={form["splatna_2"]} onChange={v => set("splatna_2", v)} type="date" />
