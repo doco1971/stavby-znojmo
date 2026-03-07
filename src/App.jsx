@@ -325,11 +325,10 @@ function FormModal({ title, initial, onSave, onClose, firmy, objednatele, stavby
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
 
             {/* Základní informace */}
-            <div style={{ display: "grid", gridTemplateColumns: "160px 1fr 1fr 1fr", gap: 12, alignItems: "end" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "160px 140px 1fr", gap: 12, alignItems: "end" }}>
               <div style={{ borderLeft: "3px solid #60a5fa", paddingLeft: 10, color: "#60a5fa", fontWeight: 700, fontSize: 12, letterSpacing: 0.5 }}>Základní informace</div>
               <FormField label="Číslo stavby" value={form["cislo_stavby"]} onChange={v => set("cislo_stavby", v)} />
               <FormSelectField label="Firma" value={form["firma"]} onChange={v => set("firma", v)} options={firmy} />
-              <div />
             </div>
 
             {/* Kategorie I */}
@@ -349,7 +348,7 @@ function FormModal({ title, initial, onSave, onClose, firmy, objednatele, stavby
             </div>
 
             {/* Fakturace & termíny */}
-            <div style={{ display: "grid", gridTemplateColumns: "160px 1fr 1fr 1fr", gap: 12, alignItems: "end" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "160px 1fr 130px 1fr", gap: 12, alignItems: "end" }}>
               <div style={{ borderLeft: "3px solid #34d399", paddingLeft: 10, color: "#34d399", fontWeight: 700, fontSize: 12, letterSpacing: 0.5 }}>Fakturace & termíny</div>
               <FormField label="Vyfakturováno" value={form["vyfakturovano"]} onChange={v => set("vyfakturovano", v)} type="number" />
               <FormField label="Ukončení" value={form["ukonceni"]} onChange={v => set("ukonceni", v)} type="date" />
@@ -370,12 +369,11 @@ function FormModal({ title, initial, onSave, onClose, firmy, objednatele, stavby
             </div>
 
             {/* Ostatní */}
-            <div style={{ display: "grid", gridTemplateColumns: "160px 1fr 1fr 1fr", gap: 12, alignItems: "end" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "160px 140px 130px 1fr 1fr", gap: 12, alignItems: "end" }}>
               <div style={{ borderLeft: "3px solid #f472b6", paddingLeft: 10, color: "#f472b6", fontWeight: 700, fontSize: 12, letterSpacing: 0.5 }}>Ostatní</div>
               <FormField label="SOD" value={form["sod"]} onChange={v => set("sod", v)} />
               <FormField label="Ze dne" value={form["ze_dne"]} onChange={v => set("ze_dne", v)} type="date" />
               <FormSelectField label="Objednatel" value={form["objednatel"]} onChange={v => set("objednatel", v)} options={objednatele} allowEmpty />
-              <div />
               <FormSelectField label="Stavbyvedoucí" value={form["stavbyvedouci"]} onChange={v => set("stavbyvedouci", v)} options={svList} allowEmpty />
             </div>
 
