@@ -1085,7 +1085,15 @@ export default function App() {
     setLoading(true);
     setDbError(null);
     if (isDemo) {
-      setData([]);
+      const dnes = new Date();
+      const fmtDate = (d) => `${d.getDate().toString().padStart(2,"0")}.${(d.getMonth()+1).toString().padStart(2,"0")}.${d.getFullYear()}`;
+      const za10 = new Date(dnes); za10.setDate(za10.getDate() + 10);
+      const pred30 = new Date(dnes); pred30.setDate(pred30.getDate() - 30);
+      const demoStavby = [
+        computeRow({ id:1, firma:"Elektro s.r.o.", cislo_stavby:"ZN-2025-001", nazev_stavby:"Rekonstrukce VO Pražská", ps_i:850000, snk_i:120000, bo_i:0, ps_ii:0, bo_ii:0, poruch:45000, vyfakturovano:720000, ukonceni:fmtDate(za10), zrealizovano:680000, sod:"SOD-2025-14", ze_dne:"15.01.2025", objednatel:"Město Znojmo", stavbyvedouci:"Jan Novák", nabidkova_cena:1015000, cislo_faktury:"FAK-2025-031", castka_bez_dph:594000, splatna:"28.02.2025", cislo_faktury_2:"", bez_dph_2:0, splatna_2:"" }),
+        computeRow({ id:2, firma:"Stavmont a.s.", cislo_stavby:"ZN-2025-002", nazev_stavby:"Oprava kanalizace Dvořákova", ps_i:0, snk_i:0, bo_i:320000, ps_ii:0, bo_ii:180000, poruch:0, vyfakturovano:0, ukonceni:fmtDate(pred30), zrealizovano:0, sod:"SOD-2025-22", ze_dne:"10.02.2025", objednatel:"Jihomoravský kraj", stavbyvedouci:"Petr Svoboda", nabidkova_cena:500000, cislo_faktury:"", castka_bez_dph:0, splatna:"", cislo_faktury_2:"", bez_dph_2:0, splatna_2:"" }),
+      ];
+      setData(demoStavby);
       setFirmy(DEMO_FIRMY);
       setObjednatele(DEMO_CISELNIKY.objednatele);
       setStavbyvedouci(DEMO_CISELNIKY.stavbyvedouci);
