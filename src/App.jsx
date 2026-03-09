@@ -1010,7 +1010,8 @@ export default function App() {
 
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
   const isSuperAdmin = user?.role === "superadmin";
-  const isEditor = user?.role === "user_e" || isAdmin || isDemo;
+  const isEditor = user?.role === "user_e" || isAdmin || user?.email === "demo";
+  const isDemo = user?.email === "demo";
 
   // ── Šířky sloupců (jen superadmin) ─────────────────────────
   const [colWidths, setColWidths] = useState({});
@@ -1109,7 +1110,6 @@ export default function App() {
     }
   }, []);
 
-  const isDemo = user?.email === "demo";
   useEffect(() => { loadAll(user?.email === "demo"); }, [loadAll, user?.email]);
 
   // ── Upozornění na blížící se termíny ──────────────────────
