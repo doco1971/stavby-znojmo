@@ -68,12 +68,15 @@ const COLUMNS = [
 
 const inputSx = { width: "100%", padding: "9px 11px", background: "#0f172a", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 7, color: "#fff", fontSize: 13, outline: "none", boxSizing: "border-box" };
 
+// ── Globální sdílené konstanty ─────────────────────────────
+const NUM_FIELDS = ["ps_i","snk_i","bo_i","ps_ii","bo_ii","poruch","vyfakturovano","zrealizovano","nabidkova_cena","castka_bez_dph","bez_dph_2"];
+const DATE_FIELDS = ["ukonceni","splatna","ze_dne","splatna_2"];
+const FIRMA_COLOR_FALLBACK = ["#3b82f6","#facc15","#a855f7","#ef4444","#0ea5e9","#f97316","#10b981","#ec4899"];
+const hexToRgb = hex => { const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex); return r ? `${parseInt(r[1],16)},${parseInt(r[2],16)},${parseInt(r[3],16)}` : "59,130,246"; };
+const hexToRgbaGlobal = (hex, alpha) => `rgba(${hexToRgb(hex)},${alpha})`;
+
 function Lbl({ children }) {
   return <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 10, fontWeight: 700, letterSpacing: 0.8, marginBottom: 5, textTransform: "uppercase" }}>{children}</div>;
-}
-
-function SecHead({ color, children }) {
-  return <div style={{ gridColumn: "1 / -1", borderLeft: `3px solid ${color}`, paddingLeft: 10, color, fontWeight: 700, fontSize: 12, letterSpacing: 0.5, marginTop: 8, marginBottom: 2 }}>{children}</div>;
 }
 
 function NativeSelect({ value, onChange, options, style, isDark = true }) {
@@ -178,6 +181,9 @@ function Login({ onLogin, users, onLogAction }) {
         <button onClick={handle} disabled={loading} style={{ width: "100%", padding: 14, background: "linear-gradient(135deg,#2563eb,#1d4ed8)", border: "none", borderRadius: 10, color: "#fff", fontSize: 15, fontWeight: 600, cursor: "pointer", opacity: loading ? 0.7 : 1 }}>
           {loading ? "Přihlašuji..." : "Přihlásit se →"}
         </button>
+        <div style={{ marginTop: 16, textAlign: "center", color: "rgba(255,255,255,0.25)", fontSize: 12 }}>
+          Zapomenuté heslo? Kontaktuj administrátora.
+        </div>
 
       </div>
     </div>
@@ -187,8 +193,6 @@ function Login({ onLogin, users, onLogAction }) {
 // ============================================================
 // SUMMARY CARDS
 // ============================================================
-const FIRMA_COLORS = ["#2563eb","#ca8a04","#16a34a","#7c3aed","#e11d48","#0891b2","#d97706","#059669","#9333ea","#dc2626"];
-
 function SummaryCards({ data, firmy, isDark, firmaColors }) {
   const sum = (firma, fields) => data.filter(r => r.firma === firma).reduce((a, r) => { fields.forEach(f => a += Number(r[f])||0); return a; }, 0);
   const sumAll = (fields) => data.reduce((a, r) => { fields.forEach(f => a += Number(r[f])||0); return a; }, 0);
@@ -326,18 +330,15 @@ function FormModal({ title, initial, onSave, onClose, firmy, objednatele, stavby
     document.removeEventListener("mouseup", onDragEnd);
   };
 
-  const numFields = ["ps_i","snk_i","bo_i","ps_ii","bo_ii","poruch","vyfakturovano","zrealizovano","nabidkova_cena","castka_bez_dph","bez_dph_2"];
-  const dateFields = ["ukonceni","splatna","ze_dne","splatna_2"];
-
   const handleSave = () => {
-    for (const k of numFields) {
+    for (const k of NUM_FIELDS) {
       const v = form[k];
       if (v !== "" && v != null && isNaN(String(v).replace(",", "."))) {
         setSaveErr(`Pole "${k}" musí být číslo!`);
         return;
       }
     }
-    for (const k of dateFields) {
+    for (const k of DATE_FIELDS) {
       const v = form[k];
       if (v && !/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(v.trim())) {
         setSaveErr(`Pole "${k}" musí být datum ve formátu DD.MM.RRRR`);
@@ -491,7 +492,7 @@ function ListEditor({ label, color, list, setList, nv, setNv, isDark }) {
   );
 }
 
-function FirmyEditor({ list, setList, isDark, onNvChange, stavbyData, onDeleteFirmaWithStavby }) {
+function FirmyEditor({ list, setList, isDark, onNvChange, stavbyData }) {
   const [newNazev, setNewNazev] = useState("");
   const [newBarva, setNewBarva] = useState("#3b82f6");
   const [confirmDelete, setConfirmDelete] = useState(null); // { hodnota, count }
@@ -932,9 +933,14 @@ export default function App() {
   const [showExport, setShowExport] = useState(false);
   const [confirmExport, setConfirmExport] = useState(null); // { type, label }
 
+  // ── Toast notifikace (nahrazuje alert) ────────────────────
+  const [toast, setToast] = useState(null);
+  const showToast = useCallback((msg, type = "error") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 4000);
+  }, []);
+
   const doExportXLSColor = () => {
-    const firmaColorMap = Object.fromEntries(firmy.map(f => [f.hodnota, f.barva || "#3b82f6"]));
-    const hexToRgb = hex => { const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex); return r ? `${parseInt(r[1],16)},${parseInt(r[2],16)},${parseInt(r[3],16)}` : "59,130,246"; };
     const cols = COLUMNS.filter(c => c.key !== "id");
     const headers = cols.map(c => `<th style="padding:7px 10px;background:#1E3A8A;color:#fff;border:1px solid #2563EB;white-space:nowrap;font-size:11px">${c.label}</th>`).join("");
     const rows = filtered.map((row, i) => {
@@ -1082,17 +1088,19 @@ export default function App() {
   const [showOrphanWarning, setShowOrphanWarning] = useState(false);
 
   const pracovniDny = (from, to) => {
-    let count = 0;
-    const d = new Date(from);
-    d.setHours(0,0,0,0);
-    const end = new Date(to);
-    end.setHours(0,0,0,0);
-    while (d < end) {
-      d.setDate(d.getDate() + 1);
-      const day = d.getDay();
-      if (day !== 0 && day !== 6) count++;
+    const d0 = new Date(from); d0.setHours(0,0,0,0);
+    const d1 = new Date(to); d1.setHours(0,0,0,0);
+    if (d1 <= d0) return 0;
+    const totalDays = Math.round((d1 - d0) / 86400000);
+    const fullWeeks = Math.floor(totalDays / 7);
+    let extra = totalDays % 7;
+    const startDay = d0.getDay(); // 0=Sun
+    let extraWork = 0;
+    for (let i = 1; i <= extra; i++) {
+      const day = (startDay + i) % 7;
+      if (day !== 0 && day !== 6) extraWork++;
     }
-    return count;
+    return fullWeeks * 5 + extraWork;
   };
 
   const parseDatum = (s) => {
@@ -1150,26 +1158,25 @@ export default function App() {
   // ── CRUD stavby ────────────────────────────────────────────
   const handleSave = async (updated) => {
     const { id, nabidka, rozdil, ...fields } = updated;
-    const numFields = ["ps_i","snk_i","bo_i","ps_ii","bo_ii","poruch","vyfakturovano","zrealizovano","nabidkova_cena","castka_bez_dph","bez_dph_2"];
-    numFields.forEach(k => { if (fields[k] === "" || fields[k] == null) fields[k] = 0; else fields[k] = Number(fields[k]) || 0; });
+    NUM_FIELDS.forEach(k => { if (fields[k] === "" || fields[k] == null) fields[k] = 0; else fields[k] = Number(fields[k]) || 0; });
     try {
       await sb(`stavby?id=eq.${id}`, { method: "PATCH", body: JSON.stringify(fields) });
       await logAkce(user?.email, "Editace stavby", `ID: ${id}, ${fields.nazev_stavby}`);
-      await loadAll();
-    } catch (e) { alert("Chyba uložení: " + e.message); }
-    setEditRow(null);
+      setData(prev => prev.map(r => r.id === id ? computeRow({ ...r, ...fields }) : r));
+      setEditRow(null);
+    } catch (e) { showToast("Chyba uložení: " + e.message, "error"); }
   };
 
   const handleAdd = async (newRow) => {
     const { id, nabidka, rozdil, ...fields } = newRow;
-    const numFields = ["ps_i","snk_i","bo_i","ps_ii","bo_ii","poruch","vyfakturovano","zrealizovano","nabidkova_cena","castka_bez_dph","bez_dph_2"];
-    numFields.forEach(k => { if (fields[k] === "" || fields[k] == null) fields[k] = 0; else fields[k] = Number(fields[k]) || 0; });
+    NUM_FIELDS.forEach(k => { if (fields[k] === "" || fields[k] == null) fields[k] = 0; else fields[k] = Number(fields[k]) || 0; });
     try {
-      await sb("stavby", { method: "POST", body: JSON.stringify(fields) });
+      const res = await sb("stavby", { method: "POST", body: JSON.stringify(fields) });
       await logAkce(user?.email, "Přidání stavby", fields.nazev_stavby);
-      await loadAll();
-    } catch (e) { alert("Chyba přidání: " + e.message); }
-    setAdding(false);
+      if (res && res[0]) setData(prev => [...prev, computeRow(res[0])]);
+      else await loadAll();
+      setAdding(false);
+    } catch (e) { showToast("Chyba přidání: " + e.message, "error"); }
   };
 
   const handleDelete = async (id) => {
@@ -1177,9 +1184,9 @@ export default function App() {
     try {
       await sb(`stavby?id=eq.${id}`, { method: "DELETE", prefer: "return=minimal" });
       await logAkce(user?.email, "Smazání stavby", `ID: ${id}, ${row?.nazev_stavby || ""}`);
-      await loadAll();
-    } catch (e) { alert("Chyba mazání: " + e.message); }
-    setDeleteConfirm(null);
+      setData(prev => prev.filter(r => r.id !== id));
+      setDeleteConfirm(null);
+    } catch (e) { showToast("Chyba mazání: " + e.message, "error"); }
   };
 
   // ── CRUD číselníky ─────────────────────────────────────────
@@ -1193,7 +1200,7 @@ export default function App() {
       ];
       await sb("ciselniky", { method: "POST", body: JSON.stringify(items) });
       await loadAll();
-    } catch (e) { alert("Chyba uložení číselníků: " + e.message); }
+    } catch (e) { showToast("Chyba uložení číselníků: " + e.message, "error"); }
   };
 
   // ── CRUD uživatelé ─────────────────────────────────────────
@@ -1203,7 +1210,7 @@ export default function App() {
       const items = uList.map(u => ({ jmeno: u.name, email: u.email, heslo: u.password, role: u.role }));
       await sb("uzivatele", { method: "POST", body: JSON.stringify(items) });
       await loadAll();
-    } catch (e) { alert("Chyba uložení uživatelů: " + e.message); }
+    } catch (e) { showToast("Chyba uložení uživatelů: " + e.message, "error"); }
   };
 
   const filtered = useMemo(() => data.filter(r => {
@@ -1271,7 +1278,7 @@ export default function App() {
       const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office"><head><meta charset="utf-8"></head><body><table>${headers}${dataRows}</table></body></html>`;
       const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8" });
       const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `log_aktivit_${ts}.xls`; a.click();
-    } catch(e) { alert("Chyba exportu logu: " + e.message); }
+    } catch(e) { showToast("Chyba exportu logu: " + e.message, "error"); }
   };
 
   const zalohaExcel = () => {
@@ -1330,46 +1337,33 @@ export default function App() {
     dropdownBg: "#ffffff", hoverBg: "rgba(0,0,0,0.04)", numColor: "#2563eb",
   };
 
-  const nextId = data.length > 0 ? Math.max(...data.map(r => r.id)) + 1 : 1;
+  const nextId = data.length > 0 ? data.reduce((max, r) => Math.max(max, r.id), 0) + 1 : 1;
   const emptyRow = { id: nextId, firma: firmy[0]?.hodnota||"", ps_i: 0, snk_i: 0, bo_i: 0, ps_ii: 0, bo_ii: 0, poruch: 0, cislo_stavby: "", nazev_stavby: "", vyfakturovano: 0, ukonceni: "", zrealizovano: "", sod: "", ze_dne: "", objednatel: "", stavbyvedouci: "", nabidkova_cena: 0, cislo_faktury: "", castka_bez_dph: 0, splatna: "", cislo_faktury_2: "", bez_dph_2: 0, splatna_2: "" };
 
-  const FIRMA_COLOR_FALLBACK = [
-    "#3b82f6","#facc15","#a855f7","#ef4444","#0ea5e9","#f97316","#10b981","#ec4899",
-  ];
+  // ── Cache barev firem – počítá se jen při změně firmy nebo tématu ─────
+  const firmaColorCache = useMemo(() => {
+    const cache = {};
+    firmy.forEach((firmaObj, idx) => {
+      const name = firmaObj.hodnota;
+      const hex = (firmaObj.barva && firmaObj.barva !== "")
+        ? firmaObj.barva
+        : FIRMA_COLOR_FALLBACK[idx % FIRMA_COLOR_FALLBACK.length] || "#3b82f6";
+      const [r, g, b] = hexToRgb(hex).split(",").map(Number);
+      const br = isDark ? 15 : 241, bg2 = isDark ? 23 : 245, bb = isDark ? 42 : 249;
+      const mix = isDark ? 0.18 : 0.15;
+      const rowBgColor = `rgb(${Math.round(r*mix+br*(1-mix))},${Math.round(g*mix+bg2*(1-mix))},${Math.round(b*mix+bb*(1-mix))})`;
+      cache[name] = {
+        bg: rowBgColor,
+        badge: hexToRgbaGlobal(hex, 0.25),
+        badgeBorder: hexToRgbaGlobal(hex, 0.6),
+        text: hex,
+        hex,
+      };
+    });
+    return cache;
+  }, [firmy, isDark]);
 
-  const hexToRgba = (hex, alpha) => {
-    const h = hex.replace("#", "");
-    const r = parseInt(h.substring(0, 2), 16);
-    const g = parseInt(h.substring(2, 4), 16);
-    const b = parseInt(h.substring(4, 6), 16);
-    return `rgba(${r},${g},${b},${alpha})`;
-  };
-
-  // Mixes hex color with background to get visible but subtle row color
-  const hexToRowBg = (hex) => {
-    const h = hex.replace("#", "");
-    const r = parseInt(h.substring(0, 2), 16);
-    const g = parseInt(h.substring(2, 4), 16);
-    const b = parseInt(h.substring(4, 6), 16);
-    const br = isDark ? 15 : 241, bg2 = isDark ? 23 : 245, bb = isDark ? 42 : 249;
-    const mix = isDark ? 0.18 : 0.15;
-    const mr = Math.round(r * mix + br * (1 - mix));
-    const mg = Math.round(g * mix + bg2 * (1 - mix));
-    const mb = Math.round(b * mix + bb * (1 - mix));
-    return `rgb(${mr},${mg},${mb})`;
-  };
-
-  const getFirmaColor = (firmaName) => {
-    const firmaObj = firmy.find(f => f.hodnota === firmaName);
-    const hex = (firmaObj?.barva && firmaObj.barva !== "") ? firmaObj.barva
-      : FIRMA_COLOR_FALLBACK[firmy.findIndex(f => f.hodnota === firmaName) % FIRMA_COLOR_FALLBACK.length] || "#3b82f6";
-    return {
-      bg: hexToRowBg(hex),
-      badge: hexToRgba(hex, 0.25),
-      badgeBorder: hexToRgba(hex, 0.6),
-      text: hex,
-    };
-  };
+  const getFirmaColor = (firmaName) => firmaColorCache[firmaName] || { bg: isDark ? "#1a2744" : "#e2e8f0", badge: "rgba(59,130,246,0.25)", badgeBorder: "rgba(59,130,246,0.6)", text: "#3b82f6", hex: "#3b82f6" };
 
   const firmaBadge = (firma) => {
     const c = getFirmaColor(firma);
@@ -1378,9 +1372,18 @@ export default function App() {
 
   const rowBg = (firma) => getFirmaColor(firma).bg;
 
+  // ── firmaColorMap pro exporty (sdílený) ───────────────────
+  const firmaColorMap = useMemo(() => Object.fromEntries(firmy.map(f => [f.hodnota, f.barva || "#3b82f6"])), [firmy]);
+
   return (
     <div style={{ height: "100vh", maxHeight: "100vh", background: T.appBg, fontFamily: "'Segoe UI',Tahoma,sans-serif", color: T.text, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}} ${!isDark ? "table td:not(.colored-cell) { color: #1e293b; } table td:not(.colored-cell) input { color: #1e293b; } table td:not(.colored-cell) select { color: #1e293b; }" : ""}`}</style>
+      {/* Toast notifikace */}
+      {toast && (
+        <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 9999, padding: "12px 20px", borderRadius: 10, background: toast.type === "error" ? "#dc2626" : "#16a34a", color: "#fff", fontSize: 13, fontWeight: 600, boxShadow: "0 8px 24px rgba(0,0,0,0.4)", maxWidth: 360 }}>
+          {toast.type === "error" ? "⚠️ " : "✅ "}{toast.msg}
+        </div>
+      )}
 
       {/* HEADER */}
       <div ref={headerRef} style={{ background: T.headerBg, borderBottom: `1px solid ${T.headerBorder}`, padding: "11px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -1402,7 +1405,7 @@ export default function App() {
           <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700, background: isSuperAdmin ? "rgba(168,85,247,0.2)" : isAdmin ? "rgba(245,158,11,0.2)" : isEditor ? "rgba(34,197,94,0.2)" : "rgba(100,116,139,0.2)", color: isSuperAdmin ? "#c084fc" : isAdmin ? "#fbbf24" : isEditor ? "#4ade80" : "#94a3b8" }}>{isSuperAdmin ? "SUPERADMIN" : isAdmin ? "ADMIN" : isEditor ? "USER EDITOR" : "USER"}</span>
           {isAdmin && <button onClick={() => { setShowSettings(true); loadLog(); }} style={{ padding: "5px 12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: T.textMuted, cursor: "pointer", fontSize: 12 }}>⚙️ Nastavení</button>}
           <div style={{ display: "flex", background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 8, overflow: "hidden" }}>
-            {[["🌞","light","Světlý"],["🌙","dark","Tmavý"]].map(([icon, val, label]) => (
+            {[["🌞","light","Světlý"],["🌙","dark","Tmavý"],["💻","system","Systém"]].map(([icon, val, label]) => (
               <button key={val} onClick={() => changeTheme(val)} title={label} style={{ padding: "5px 9px", background: theme === val ? (isDark ? "rgba(37,99,235,0.3)" : "rgba(37,99,235,0.15)") : "transparent", border: "none", color: theme === val ? "#60a5fa" : T.textMuted, cursor: "pointer", fontSize: 13 }}>{icon}</button>
             ))}
           </div>
@@ -1667,8 +1670,6 @@ export default function App() {
               <h3 style={{ color: "#fff", margin: 0, fontSize: 16 }}>🖨️ Náhled pro tisk / PDF</h3>
               <div style={{ display: "flex", gap: 10 }}>
                 <button onClick={() => {
-                  const firmaColorMap = Object.fromEntries(firmy.map(f => [f.hodnota, f.barva || "#3b82f6"]));
-                  const hexToRgb = hex => { const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex); return r ? `${parseInt(r[1],16)},${parseInt(r[2],16)},${parseInt(r[3],16)}` : "59,130,246"; };
                   const rows = filtered.map((row, i) => {
                     const hex = firmaColorMap[row.firma] || "#3b82f6";
                     const rgb = hexToRgb(hex);
@@ -1721,8 +1722,6 @@ export default function App() {
                     </thead>
                     <tbody>
                       {filtered.map((row, i) => {
-                        const firmaColorMap = Object.fromEntries(firmy.map(f => [f.hodnota, f.barva || "#3b82f6"]));
-                        const hexToRgb = hex => { const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex); return r ? `${parseInt(r[1],16)},${parseInt(r[2],16)},${parseInt(r[3],16)}` : "59,130,246"; };
                         const hex = firmaColorMap[row.firma] || "#3b82f6";
                         const rgb = hexToRgb(hex);
                         const bg = i % 2 === 0 ? `rgba(${rgb},0.18)` : `rgba(${rgb},0.07)`;
