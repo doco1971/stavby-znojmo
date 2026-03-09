@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-// BUILD: 2026_03_09_build0022
+// BUILD: 2026_03_09_build0023
 // ============================================================
 // SUPABASE CONFIG
 // ============================================================
@@ -1540,7 +1540,7 @@ export default function App() {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {!isDemo && deadlineWarnings.length > 0 && <button onClick={() => setShowDeadlines(true)} onMouseEnter={e => showTooltip(e, `Stavby s termínem do 30 dní (${deadlineWarnings.length})`)} onMouseLeave={hideTooltip} style={{ padding: "5px 12px", background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 7, color: "#f87171", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>⚠️ Termíny ({deadlineWarnings.length})</button>}
+          {!isDemo && deadlineWarnings.length > 0 && <button onClick={() => setShowDeadlines(true)} onMouseEnter={e => showTooltip(e, `Stavby s termínem dokončení do 30 dní`)} onMouseLeave={hideTooltip} style={{ padding: "5px 12px", background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 7, color: "#f87171", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>⚠️ Termíny ({deadlineWarnings.length})</button>}
           {!isDemo && (() => { const firmyNames = firmy.map(f => f.hodnota); const count = data.filter(s => s.firma && !firmyNames.includes(s.firma)).length; return count > 0 ? <button onClick={() => setShowOrphanWarning(true)} style={{ padding: "5px 12px", background: "rgba(251,191,36,0.15)", border: "1px solid rgba(251,191,36,0.3)", borderRadius: 7, color: "#fbbf24", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>🏚️ Bez firmy ({count})</button> : null; })()}
           <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#4ade80" }} />
           <span style={{ color: T.text, fontSize: 13 }}>{user.name}</span>
@@ -1738,7 +1738,7 @@ export default function App() {
                 { icon: "✏️", title: "Editace stavby", text: "Klikněte na modré tlačítko ✏️ v řádku stavby. Otevře se stejný formulář s předvyplněnými hodnotami." },
                 { icon: "🗑️", title: "Smazání stavby", text: "Klikněte na červené tlačítko 🗑️. Systém požádá o potvrzení – musíte kliknout dvakrát pro jistotu." },
                 { icon: "🎨", title: "Barevné řádky", text: "Každá firma má svou barvu. Řádek se zbarví výrazně zeleně pokud má stavba vyplněné číslo faktury, částku bez DPH a datum splatnosti zároveň." },
-                { icon: "⚠️", title: "Červené termíny", text: "Pole Ukončení se zobrazí červeně s ikonou ⚠️ pokud je termín v minulosti. Tlačítko Termíny v hlavičce upozorní na stavby s termínem do 30 dní." },
+                { icon: "⚠️", title: "Červené termíny", text: "Pole Ukončení se zobrazí červeně s ikonou ⚠️ pokud je termín dokončení v minulosti. Tlačítko Termíny v hlavičce upozorní na stavby s termínem dokončení do 30 dní." },
                 { icon: "🔍", title: "Filtry", text: "Vyhledávejte podle názvu nebo čísla stavby. Filtrujte podle firmy, objednatele nebo stavbyvedoucího. Filtry lze kombinovat." },
                 { icon: "📤", title: "Export", text: "CSV – tabulka pro Excel. Excel – standardní .xlsx. Barevný Excel – .xls se zbarvením firem (při otevření potvrďte varování). PDF – tisk přehledu." },
                 { icon: "💾", title: "Záloha", text: "Tlačítko Záloha stáhne kompletní zálohu všech staveb jako Excel soubor. Doporučujeme zálohovat pravidelně." },
