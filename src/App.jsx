@@ -109,7 +109,7 @@ function NativeSelect({ value, onChange, options, style, isDark = true }) {
   return (
     <div ref={ref} style={{ position: "relative", ...style }}
       onMouseEnter={openDropdown}
-      onMouseLeave={() => setTimeout(() => setOpen(false), 800)}
+      onMouseLeave={() => setTimeout(() => setOpen(false), 480)}
     >
       <button style={{ width: "100%", padding: "7px 30px 7px 12px", background: bg, border: `1px solid ${border}`, borderRadius: 7, color: textColor, cursor: "pointer", fontSize: 13, textAlign: "left", display: "flex", alignItems: "center", justifyContent: "space-between", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
         <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{value}</span>
@@ -1397,7 +1397,7 @@ export default function App() {
         <NativeSelect value={filterSV} onChange={setFilterSV} options={["Všichni stavbyvedoucí", ...stavbyvedouci]} isDark={isDark} style={{ width: 170 }} />
         <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
           <span style={{ background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)", border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.15)"}`, borderRadius: 7, padding: "4px 12px", color: T.text, fontSize: 13, fontWeight: 600 }}>{filtered.length} záznamů</span>
-          <div style={{ position: "relative" }} onMouseEnter={() => setShowExport(true)} onMouseLeave={() => setTimeout(() => setShowExport(false), 600)}>
+          <div style={{ position: "relative" }} onMouseEnter={() => setShowExport(true)} onMouseLeave={() => setTimeout(() => setShowExport(false), 360)}>
             <button style={{ padding: "7px 14px", background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.15)"}`, borderRadius: 7, color: T.text, cursor: "pointer", fontSize: 12 }}>⬇ Export ▾</button>
             {showExport && (
               <div style={{ position: "absolute", top: "calc(100% + 2px)", right: 0, background: isDark ? "#1e293b" : "#fff", border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`, borderRadius: 10, padding: "6px 6px", zIndex: 200, minWidth: 180, boxShadow: "0 12px 32px rgba(0,0,0,0.3)" }}>
