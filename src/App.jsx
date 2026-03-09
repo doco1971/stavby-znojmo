@@ -78,12 +78,28 @@ function SecHead({ color, children }) {
 
 function NativeSelect({ value, onChange, options, style, isDark = true }) {
   const [open, setOpen] = useState(false);
+  const [dropUp, setDropUp] = useState(false);
+  const [dropPos, setDropPos] = useState({ top: 0, left: 0, width: 0 });
   const ref = useRef(null);
   useEffect(() => {
     const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  const openDropdown = () => {
+    if (ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const estimatedHeight = Math.min(options.length * 38, 280);
+      const goUp = spaceBelow < estimatedHeight && spaceAbove > spaceBelow;
+      setDropUp(goUp);
+      setDropPos({ top: goUp ? rect.top : rect.bottom, left: rect.left, width: rect.width });
+    }
+    setOpen(true);
+  };
+
   const bg = isDark ? "#1e293b" : "#fff";
   const border = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.15)";
   const textColor = isDark ? "#e2e8f0" : "#1e293b";
@@ -92,7 +108,7 @@ function NativeSelect({ value, onChange, options, style, isDark = true }) {
   const dropShadow = isDark ? "0 8px 24px rgba(0,0,0,0.5)" : "0 8px 24px rgba(0,0,0,0.12)";
   return (
     <div ref={ref} style={{ position: "relative", ...style }}
-      onMouseEnter={() => setOpen(true)}
+      onMouseEnter={openDropdown}
       onMouseLeave={() => setTimeout(() => setOpen(false), 800)}
     >
       <button style={{ width: "100%", padding: "7px 30px 7px 12px", background: bg, border: `1px solid ${border}`, borderRadius: 7, color: textColor, cursor: "pointer", fontSize: 13, textAlign: "left", display: "flex", alignItems: "center", justifyContent: "space-between", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -100,7 +116,7 @@ function NativeSelect({ value, onChange, options, style, isDark = true }) {
         <span style={{ marginLeft: 8, fontSize: 10, color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)", flexShrink: 0 }}>▼</span>
       </button>
       {open && (
-        <div style={{ position: "absolute", top: "100%", left: 0, minWidth: "100%", background: dropBg, border: `1px solid ${border}`, borderRadius: "0 0 8px 8px", zIndex: 500, boxShadow: dropShadow, overflow: "hidden" }}>
+        <div style={{ position: "fixed", top: dropUp ? "auto" : dropPos.top, bottom: dropUp ? window.innerHeight - dropPos.top : "auto", left: dropPos.left, width: dropPos.width, background: dropBg, border: `1px solid ${border}`, borderRadius: 8, zIndex: 9999, boxShadow: dropShadow, overflow: "auto", maxHeight: 280 }}>
           {options.map(o => (
             <div key={o} onClick={() => { onChange(o); setOpen(false); }}
               style={{ padding: "9px 14px", color: o === value ? (isDark ? "#60a5fa" : "#2563eb") : textColor, background: o === value ? (isDark ? "rgba(37,99,235,0.15)" : "rgba(37,99,235,0.08)") : "transparent", cursor: "pointer", fontSize: 13, whiteSpace: "nowrap" }}
