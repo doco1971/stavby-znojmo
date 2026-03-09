@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-// BUILD: 2026_03_09_build0002
+// BUILD: 2026_03_09_build0004
 // ============================================================
 // SUPABASE CONFIG
 // ============================================================
@@ -400,7 +400,7 @@ function FormModal({ title, initial, onSave, onClose, firmy, objednatele, stavby
         {/* Header – táhlo pro přesun */}
         <div onMouseDown={onDragStart} style={{ padding: "14px 24px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, cursor: "grab", userSelect: "none" }}>
           <h3 style={{ color: "#fff", margin: 0, fontSize: 16, flexShrink: 0 }}>{title} <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", fontWeight: 400 }}>⠿ přetáhnout</span></h3>
-          <input onMouseDown={e => e.stopPropagation()} value={form["nazev_stavby"] ?? ""} onChange={e => set("nazev_stavby", e.target.value)} placeholder="Název stavby..." style={{ flex: 1, padding: "7px 14px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, color: "#fff", fontSize: 15, fontWeight: 600, outline: "none", cursor: "text" }} />
+          <input onMouseDown={e => e.stopPropagation()} value={form["nazev_stavby"] ?? ""} onChange={e => set("nazev_stavby", e.target.value)} placeholder="Název stavby..." onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); const modal = e.target.closest("[data-modal]"); if (modal) { const inputs = Array.from(modal.querySelectorAll("input:not([disabled]),select:not([disabled])")); const idx = inputs.indexOf(e.target); if (idx < inputs.length - 1) inputs[idx + 1].focus(); } } }} style={{ flex: 1, padding: "7px 14px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, color: "#fff", fontSize: 15, fontWeight: 600, outline: "none", cursor: "text" }} />
           <button onClick={onClose} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: 20, cursor: "pointer", flexShrink: 0 }}>✕</button>
         </div>
 
@@ -1302,26 +1302,22 @@ export default function App() {
   const headerRef = useRef(null);
   const cardsRef = useRef(null);
   const filtersRef = useRef(null);
+  const tableWrapRef = useRef(null);
 
   const [PAGE_SIZE, setPageSize] = useState(10);
   useEffect(() => {
     const calc = () => {
       const rowH = 36;
-      const theadH = 36;
-      const paginationH = 44;
-      const headerH = headerRef.current?.offsetHeight || 52;
-      const cardsH = cardsRef.current?.offsetHeight || 105;
-      const filtersH = filtersRef.current?.offsetHeight || 52;
-      const reserved = headerH + cardsH + filtersH + theadH + paginationH + 4;
-      const rows = Math.max(5, Math.floor((window.innerHeight - reserved) / rowH));
-      setPageSize(rows);
-      setTableHeight(window.innerHeight - headerH - cardsH - filtersH - paginationH - 4);
+      const theadH = 38;
+      if (tableWrapRef.current) {
+        const available = tableWrapRef.current.clientHeight - theadH;
+        const rows = Math.max(5, Math.floor(available / rowH));
+        setPageSize(rows);
+      }
     };
-    const timer = setTimeout(calc, 200);
+    const timer = setTimeout(calc, 100);
     const ro = new ResizeObserver(calc);
-    if (headerRef.current) ro.observe(headerRef.current);
-    if (cardsRef.current) ro.observe(cardsRef.current);
-    if (filtersRef.current) ro.observe(filtersRef.current);
+    if (tableWrapRef.current) ro.observe(tableWrapRef.current);
     window.addEventListener("resize", calc);
     return () => { clearTimeout(timer); ro.disconnect(); window.removeEventListener("resize", calc); };
   }, []);
@@ -1454,7 +1450,7 @@ export default function App() {
 
   return (
     <div style={{ height: "100vh", maxHeight: "100vh", background: T.appBg, fontFamily: "'Segoe UI',Tahoma,sans-serif", color: T.text, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}} ${!isDark ? "table td:not(.colored-cell) { color: #1e293b; } table td:not(.colored-cell) input { color: #1e293b; } table td:not(.colored-cell) select { color: #1e293b; }" : ""}`}</style>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}} .table-wrapper { display: flex; flex-direction: column; } tbody tr { height: 36px; } ${!isDark ? "table td:not(.colored-cell) { color: #1e293b; } table td:not(.colored-cell) input { color: #1e293b; } table td:not(.colored-cell) select { color: #1e293b; }" : ""}`}</style>
       {toast && (
         <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 9999, padding: "12px 20px", borderRadius: 10, background: toast.type === "error" ? "#dc2626" : "#16a34a", color: "#fff", fontSize: 13, fontWeight: 600, boxShadow: "0 8px 24px rgba(0,0,0,0.4)", maxWidth: 360 }}>
           {toast.type === "error" ? "⚠️ " : "✅ "}{toast.msg}
@@ -1528,7 +1524,7 @@ export default function App() {
       </div>
 
       {/* TABLE */}
-      <div style={{ overflow: "auto", flex: 1 }}>
+      <div ref={tableWrapRef} className="table-wrapper" style={{ overflow: "auto", flex: 1, minHeight: 0 }}>
         <table style={{ borderCollapse: "collapse", fontSize: 12.5, tableLayout: "fixed", width: "max-content" }}>
           <colgroup>
             <col style={{ width: 40 }} />
@@ -1602,9 +1598,15 @@ export default function App() {
                   const hasDouble = key2 && (val2 || val2 === 0);
 
                   const isOverdue = col.key === "ukonceni" && row.ukonceni && (() => {
-                    const p = row.ukonceni.trim().split(".");
-                    if (p.length !== 3) return false;
-                    const d = new Date(`${p[2]}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`);
+                    const s = row.ukonceni.trim();
+                    let d;
+                    if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+                      d = new Date(s); // ISO: YYYY-MM-DD
+                    } else {
+                      const p = s.split(".");
+                      if (p.length !== 3) return false;
+                      d = new Date(`${p[2]}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`);
+                    }
                     const dnes = new Date(); dnes.setHours(0,0,0,0);
                     return !isNaN(d) && d < dnes;
                   })();
@@ -1641,14 +1643,7 @@ export default function App() {
               </tr>
               );
             })}
-            {paginated.length < PAGE_SIZE && Array.from({ length: PAGE_SIZE - paginated.length }).map((_, i) => (
-              <tr key={`empty-${i}`} style={{ height: 36 }}>
-                <td style={{ border: `1px solid ${T.cellBorder}` }} />
-                {isAdmin && <td style={{ border: `1px solid ${T.cellBorder}` }} />}
-                {COLUMNS.filter(col => col.key !== "id").map(col => <td key={col.key} style={{ border: `1px solid ${T.cellBorder}` }} />)}
-                {isAdmin && <td style={{ border: `1px solid ${T.cellBorder}` }} />}
-              </tr>
-            ))}
+
           </tbody>
         </table>
       </div>
