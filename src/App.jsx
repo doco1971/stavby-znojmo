@@ -28,6 +28,20 @@ const logAkce = async (uzivatel, akce, detail = "") => {
     await sb("log_aktivit", { method: "POST", body: JSON.stringify({ uzivatel, akce, detail }), prefer: "return=minimal" });
   } catch (e) { console.warn("Log chyba:", e); }
 };
+// ============================================================
+// DEMO MODE
+// ============================================================
+const DEMO_USER = { id: 0, email: "demo", password: "demo", role: "user", name: "Demo uživatel" };
+const DEMO_FIRMY = [
+  { hodnota: "Elektro s.r.o.", barva: "#3b82f6" },
+  { hodnota: "Stavmont a.s.", barva: "#10b981" },
+];
+const DEMO_CISELNIKY = {
+  objednatele: ["Město Znojmo", "Jihomoravský kraj"],
+  stavbyvedouci: ["Jan Novák", "Petr Svoboda"],
+};
+const DEMO_MAX_STAVBY = 5;
+
 const fmt = (n) => n == null || n === "" ? "" : Number(n).toLocaleString("cs-CZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtN = (n) => (n == null || n === "" || Number(n) === 0) ? "" : fmt(n);
 
@@ -145,6 +159,10 @@ function Login({ onLogin, users, onLogAction }) {
   const handle = () => {
     setLoading(true);
     setTimeout(() => {
+      if (email.trim().toLowerCase() === "demo" && pass === "demo") {
+        onLogin(DEMO_USER);
+        return;
+      }
       const u = users.find(u => u.email === email && u.password === pass);
       if (u) { onLogAction(u.email, "Přihlášení", ""); onLogin(u); }
       else { setErr("Nesprávný email nebo heslo"); setLoading(false); }
@@ -183,6 +201,10 @@ function Login({ onLogin, users, onLogAction }) {
         </button>
         <div style={{ marginTop: 16, textAlign: "center", color: "rgba(255,255,255,0.25)", fontSize: 12 }}>
           Zapomenuté heslo? Kontaktuj administrátora.
+        </div>
+        <div style={{ marginTop: 12, padding: "10px 14px", background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: 8, textAlign: "center" }}>
+          <span style={{ color: "#fbbf24", fontSize: 12, fontWeight: 600 }}>🎮 Demo přístup: </span>
+          <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 12 }}>demo / demo</span>
         </div>
 
       </div>
@@ -1058,9 +1080,17 @@ export default function App() {
   const getColWidth = (col) => colWidths[col.key] ?? col.width;
 
   // ── Načtení dat z Supabase ─────────────────────────────────
-  const loadAll = useCallback(async () => {
+  const loadAll = useCallback(async (isDemo = false) => {
     setLoading(true);
     setDbError(null);
+    if (isDemo) {
+      setData([]);
+      setFirmy(DEMO_FIRMY);
+      setObjednatele(DEMO_CISELNIKY.objednatele);
+      setStavbyvedouci(DEMO_CISELNIKY.stavbyvedouci);
+      setLoading(false);
+      return;
+    }
     try {
       const [stavbyRes, ciselnikyRes, uzivRes] = await Promise.all([
         sb("stavby?order=id"),
@@ -1079,7 +1109,8 @@ export default function App() {
     }
   }, []);
 
-  useEffect(() => { loadAll(); }, [loadAll]);
+  const isDemo = user?.email === "demo";
+  useEffect(() => { loadAll(user?.email === "demo"); }, [loadAll, user?.email]);
 
   // ── Upozornění na blížící se termíny ──────────────────────
   const [deadlineWarnings, setDeadlineWarnings] = useState([]);
@@ -1158,6 +1189,11 @@ export default function App() {
   const handleSave = async (updated) => {
     const { id, nabidka, rozdil, ...fields } = updated;
     NUM_FIELDS.forEach(k => { if (fields[k] === "" || fields[k] == null) fields[k] = 0; else fields[k] = Number(fields[k]) || 0; });
+    if (isDemo) {
+      setData(prev => prev.map(r => r.id === id ? computeRow({ ...r, ...fields }) : r));
+      setEditRow(null);
+      return;
+    }
     try {
       await sb(`stavby?id=eq.${id}`, { method: "PATCH", body: JSON.stringify(fields) });
       await logAkce(user?.email, "Editace stavby", `ID: ${id}, ${fields.nazev_stavby}`);
@@ -1169,6 +1205,16 @@ export default function App() {
   const handleAdd = async (newRow) => {
     const { id, nabidka, rozdil, ...fields } = newRow;
     NUM_FIELDS.forEach(k => { if (fields[k] === "" || fields[k] == null) fields[k] = 0; else fields[k] = Number(fields[k]) || 0; });
+    if (isDemo) {
+      if (data.length >= DEMO_MAX_STAVBY) {
+        showToast(`Demo verze: maximum ${DEMO_MAX_STAVBY} staveb.`, "error");
+        return;
+      }
+      const demoId = data.length > 0 ? data.reduce((m, r) => Math.max(m, r.id), 0) + 1 : 1;
+      setData(prev => [...prev, computeRow({ ...fields, id: demoId })]);
+      setAdding(false);
+      return;
+    }
     try {
       await sb("stavby", { method: "POST", body: JSON.stringify(fields) });
       await logAkce(user?.email, "Přidání stavby", fields.nazev_stavby);
@@ -1178,6 +1224,11 @@ export default function App() {
   };
 
   const handleDelete = async (id) => {
+    if (isDemo) {
+      setData(prev => prev.filter(r => r.id !== id));
+      setDeleteConfirm(null);
+      return;
+    }
     const row = data.find(r => r.id === id);
     try {
       await sb(`stavby?id=eq.${id}`, { method: "DELETE", prefer: "return=minimal" });
@@ -1382,6 +1433,11 @@ export default function App() {
           {toast.type === "error" ? "⚠️ " : "✅ "}{toast.msg}
         </div>
       )}
+      {isDemo && (
+        <div style={{ background: "linear-gradient(90deg,#b45309,#d97706)", color: "#fff", textAlign: "center", padding: "6px 16px", fontSize: 12, fontWeight: 700, letterSpacing: 0.5, flexShrink: 0 }}>
+          🎮 DEMO VERZE — data se neukládají, maximum {DEMO_MAX_STAVBY} staveb ({data.length}/{DEMO_MAX_STAVBY})
+        </div>
+      )}
 
       {/* HEADER */}
       <div ref={headerRef} style={{ background: T.headerBg, borderBottom: `1px solid ${T.headerBorder}`, padding: "11px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -1435,7 +1491,12 @@ export default function App() {
             )}
           </div>
           {isAdmin && <button onClick={zalohaExcel} style={{ padding: "7px 14px", background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.15)"}`, borderRadius: 7, color: T.text, cursor: "pointer", fontSize: 12 }} title="Stáhne všechna data jako Excel zálohu">💾 Záloha</button>}
-          {isEditor && <button onClick={() => setAdding(true)} style={{ padding: "7px 14px", background: "linear-gradient(135deg,#16a34a,#15803d)", border: "none", borderRadius: 7, color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>+ Přidat stavbu</button>}
+          {isEditor && (
+            <button
+              onClick={() => { if (isDemo && data.length >= DEMO_MAX_STAVBY) { showToast(`Demo verze: maximum ${DEMO_MAX_STAVBY} staveb.`, "error"); return; } setAdding(true); }}
+              style={{ padding: "7px 14px", background: isDemo && data.length >= DEMO_MAX_STAVBY ? "rgba(100,116,139,0.4)" : "linear-gradient(135deg,#16a34a,#15803d)", border: "none", borderRadius: 7, color: "#fff", cursor: isDemo && data.length >= DEMO_MAX_STAVBY ? "not-allowed" : "pointer", fontSize: 12, fontWeight: 600 }}
+            >{isDemo ? `+ Přidat stavbu (${data.length}/${DEMO_MAX_STAVBY})` : "+ Přidat stavbu"}</button>
+          )}
         </div>
       </div>
 
