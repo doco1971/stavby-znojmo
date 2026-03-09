@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-// BUILD: 2026_03_09_build0009
+// BUILD: 2026_03_09_build0010
 // ============================================================
 // SUPABASE CONFIG
 // ============================================================
@@ -1333,6 +1333,21 @@ export default function App() {
       window.removeEventListener("resize", calc);
     };
   }, []);
+  // Přepočítej PAGE_SIZE po změně dat (výška wrapperu se mohla změnit)
+  useEffect(() => {
+    if (!tableWrapRef.current) return;
+    const wrap = tableWrapRef.current;
+    const thead = wrap.querySelector("thead");
+    const firstRow = wrap.querySelector("tbody tr");
+    if (!thead || !firstRow) return;
+    const theadH = thead.getBoundingClientRect().height;
+    const rowH = firstRow.getBoundingClientRect().height;
+    if (rowH < 1) return;
+    const available = wrap.clientHeight - theadH - 1;
+    const rows = Math.max(5, Math.floor(available / rowH));
+    if (rows !== PAGE_SIZE) setPageSize(rows);
+  });
+
   const [page, setPage] = useState(0);
   useEffect(() => { setPage(0); }, [filterFirma, filterText, filterObjed, filterSV]);
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
