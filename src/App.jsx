@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-// BUILD: 2026_03_09_build0012
+// BUILD: 2026_03_09_build0013
 // ============================================================
 // SUPABASE CONFIG
 // ============================================================
@@ -762,7 +762,8 @@ function SettingsModal({ firmy, objednatele, stavbyvedouci, users, onChange, onC
               <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: 700, letterSpacing: 0.8, marginBottom: 10 }}>SEZNAM UŽIVATELŮ ({uList.filter(u => !isAdmin || isSuperAdmin ? true : u.role !== "superadmin").length})</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {uList.filter(u => !isAdmin || isSuperAdmin ? true : u.role !== "superadmin").map(u => (
-                  <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: "rgba(255,255,255,0.03)", borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <div key={u.id}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: "rgba(255,255,255,0.03)", borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)" }}>
                     <div style={{ width: 32, height: 32, borderRadius: "50%", background: u.role === "superadmin" ? "rgba(168,85,247,0.2)" : u.role === "admin" ? "rgba(245,158,11,0.2)" : u.role === "user_e" ? "rgba(34,197,94,0.2)" : "rgba(100,116,139,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>
                       {u.role === "superadmin" ? "⚡" : u.role === "admin" ? "👑" : u.role === "user_e" ? "✏️" : "👤"}
                     </div>
@@ -773,6 +774,8 @@ function SettingsModal({ firmy, objednatele, stavbyvedouci, users, onChange, onC
                     <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700, background: u.role === "superadmin" ? "rgba(168,85,247,0.2)" : u.role === "admin" ? "rgba(245,158,11,0.2)" : u.role === "user_e" ? "rgba(34,197,94,0.15)" : "rgba(100,116,139,0.15)", color: u.role === "superadmin" ? "#c084fc" : u.role === "admin" ? "#fbbf24" : u.role === "user_e" ? "#4ade80" : "#94a3b8" }}>{u.role === "superadmin" ? "SUPERADMIN" : u.role === "admin" ? "ADMIN" : u.role === "user_e" ? "USER EDITOR" : "USER"}</span>
                     <button onClick={() => removeUser(u.id)} style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", fontSize: 16, padding: "0 4px" }} title="Smazat">✕</button>
                   </div>
+                  </div>
+                  <div>
                   {editUserId === u.id && (
                     <div style={{ margin: "6px 0 2px 0", padding: "10px 14px", background: "rgba(37,99,235,0.08)", borderRadius: 8, border: "1px solid rgba(37,99,235,0.2)", display: "flex", flexDirection: "column", gap: 8 }}>
                       <div style={{ color: "#60a5fa", fontSize: 11, fontWeight: 700, marginBottom: 2 }}>UPRAVIT UŽIVATELE</div>
@@ -795,6 +798,7 @@ function SettingsModal({ firmy, objednatele, stavbyvedouci, users, onChange, onC
                       </div>
                     </div>
                   )}
+                  </div>
                 ))}
               </div>
             </div>
