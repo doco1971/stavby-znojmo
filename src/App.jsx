@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-// BUILD: 2026_03_09_build0005
+// BUILD: 2026_03_09_build0006
 // ============================================================
 // SUPABASE CONFIG
 // ============================================================
@@ -1309,21 +1309,26 @@ export default function App() {
     const calc = () => {
       if (!tableWrapRef.current) return;
       const wrap = tableWrapRef.current;
-      // Změř skutečnou výšku thead a prvního řádku tbody
       const thead = wrap.querySelector("thead");
-      const firstRow = wrap.querySelector("tbody tr");
       const theadH = thead ? thead.getBoundingClientRect().height : 38;
-      const rowH = firstRow ? firstRow.getBoundingClientRect().height : 36;
-      const available = wrap.clientHeight - theadH - 2; // -2px border
+      const rowH = 36; // fixní výška řádku z CSS
+      const available = wrap.clientHeight - theadH - 2;
       const rows = Math.max(5, Math.floor(available / rowH));
       setPageSize(rows);
     };
-    // Počkej na render tabulky
-    const timer = setTimeout(calc, 150);
+    // Spusť výpočet vícekrát — flex layout se ustálí postupně
+    const t1 = setTimeout(calc, 0);
+    const t2 = setTimeout(calc, 100);
+    const t3 = setTimeout(calc, 300);
+    const t4 = setTimeout(calc, 600);
     const ro = new ResizeObserver(calc);
     if (tableWrapRef.current) ro.observe(tableWrapRef.current);
     window.addEventListener("resize", calc);
-    return () => { clearTimeout(timer); ro.disconnect(); window.removeEventListener("resize", calc); };
+    return () => {
+      clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4);
+      ro.disconnect();
+      window.removeEventListener("resize", calc);
+    };
   }, []);
   const [page, setPage] = useState(0);
   useEffect(() => { setPage(0); }, [filterFirma, filterText, filterObjed, filterSV]);
@@ -1454,7 +1459,7 @@ export default function App() {
 
   return (
     <div style={{ height: "100vh", maxHeight: "100vh", background: T.appBg, fontFamily: "'Segoe UI',Tahoma,sans-serif", color: T.text, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}} .table-wrapper { display: flex; flex-direction: column; } tbody tr { height: 36px; } ${!isDark ? "table td:not(.colored-cell) { color: #1e293b; } table td:not(.colored-cell) input { color: #1e293b; } table td:not(.colored-cell) select { color: #1e293b; }" : ""}`}</style>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}} .table-wrapper { display: flex; flex-direction: column; } tbody tr { height: 36px !important; max-height: 36px !important; } ${!isDark ? "table td:not(.colored-cell) { color: #1e293b; } table td:not(.colored-cell) input { color: #1e293b; } table td:not(.colored-cell) select { color: #1e293b; }" : ""}`}</style>
       {toast && (
         <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 9999, padding: "12px 20px", borderRadius: 10, background: toast.type === "error" ? "#dc2626" : "#16a34a", color: "#fff", fontSize: 13, fontWeight: 600, boxShadow: "0 8px 24px rgba(0,0,0,0.4)", maxWidth: 360 }}>
           {toast.type === "error" ? "⚠️ " : "✅ "}{toast.msg}
