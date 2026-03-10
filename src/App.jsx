@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-// BUILD: 2026_03_10_build0032
+// BUILD: 2026_03_10_build0033
 // ============================================================
 // POZNÁMKY PRO CLAUDE (čti na začátku každé session)
 // ============================================================
@@ -367,13 +367,15 @@ function LogModal({ isDark, firmy, onClose }) {
   const [filterDo,   setFilterDo]     = useState("");
 
   const AKCE_ZAKÁZKY = ["Přidání stavby","Editace stavby","Smazání stavby"];
+  const [totalLoaded, setTotalLoaded] = useState(0);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await sb(`log_aktivit?order=cas.desc&limit=5000`);
-        // Jen záznamy týkající se zakázek
-        setZaznamy((res||[]).filter(r => AKCE_ZAKÁZKY.includes(r.akce)));
+        const res = await sb(`log_aktivit?order=cas.desc&limit=10000`);
+        const all = res || [];
+        setTotalLoaded(all.length);
+        setZaznamy(all.filter(r => AKCE_ZAKÁZKY.includes(r.akce)));
       } catch { setZaznamy([]); }
       finally { setLoading(false); }
     };
@@ -478,6 +480,19 @@ function LogModal({ isDark, firmy, onClose }) {
           </div>
           <button onClick={onClose} style={{ background: "none", border: "none", color: mutedC, fontSize: 20, cursor: "pointer" }}>✕</button>
         </div>
+
+        {/* RLS varování pokud se zdá že vidíme jen své záznamy */}
+        {!loading && totalLoaded > 0 && zaznamy.length > 0 && (() => {
+          const uniqueUsers = new Set(zaznamy.map(r => r.uzivatel).filter(Boolean));
+          if (uniqueUsers.size <= 1) return (
+            <div style={{ margin: "0 22px 0", padding: "8px 14px", background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)", borderRadius: 8, fontSize: 11, color: "#fbbf24", display: "flex", gap: 8, alignItems: "flex-start" }}>
+              <span style={{ fontSize: 14 }}>⚠️</span>
+              <span>Zobrazují se jen záznamy jednoho uživatele — pravděpodobně je v Supabase zapnuté RLS na tabulce <strong>log_aktivit</strong>. Přidejte policy:<br/>
+              <code style={{ background: "rgba(0,0,0,0.2)", padding: "2px 6px", borderRadius: 4, fontFamily: "monospace", fontSize: 10 }}>CREATE POLICY "admin_read_all" ON log_aktivit FOR SELECT USING (true);</code></span>
+            </div>
+          );
+          return null;
+        })()}
 
         {/* filtry */}
         <div style={{ padding: "10px 22px", borderBottom: `1px solid ${borderC}`, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
@@ -1640,6 +1655,32 @@ export default function App() {
   const [showLog, setShowLog] = useState(false);
   // ── Historie změn ────────────────────────────────────────
   const [historieRow, setHistorieRow] = useState(null);
+  // ── Tečka nových změn v historii ─────────────────────────
+  // key = stavba id, value = true pokud má nepřečtené změny
+  const [historieNovinky, setHistorieNovinky] = useState({});
+  // Načteme při loginu — pro každou stavbu zkontrolujeme poslední editaci
+  useEffect(() => {
+    if (!user || isDemo) return;
+    const SEEN_KEY = `historie_seen_${user.email}`;
+    const seen = JSON.parse(localStorage.getItem(SEEN_KEY) || "{}"); // { stavbaId: lastSeenCas }
+    const checkNovinky = async () => {
+      try {
+        const res = await sb(`log_aktivit?akce=eq.Editace stavby&order=cas.desc&limit=2000`);
+        const novinky = {};
+        (res || []).forEach(r => {
+          const match = r.detail?.match(/^ID:\s*(\d+)[,\s]/);
+          if (!match) return;
+          const id = match[1];
+          const seenCas = seen[id];
+          if (!seenCas || new Date(r.cas) > new Date(seenCas)) {
+            novinky[id] = true;
+          }
+        });
+        setHistorieNovinky(novinky);
+      } catch { /* tiché selhání */ }
+    };
+    checkNovinky();
+  }, [user, isDemo]);
   // ── Auto-logout ──────────────────────────────────────────
   const [autoLogoutWarning, setAutoLogoutWarning] = useState(false);
   const [autoLogoutCountdown, setAutoLogoutCountdown] = useState(60);
@@ -2392,7 +2433,17 @@ export default function App() {
                   <td style={{ padding: "7px 11px", whiteSpace: "nowrap", border: `1px solid ${T.cellBorder}`, textAlign: "center" }}>
                     {isAdmin && <button onClick={() => setDeleteConfirm({ id: row.id, step: 1 })} onMouseEnter={e => showTooltip(e, "Smazat stavbu")} onMouseLeave={hideTooltip} style={{ padding: "3px 9px", background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 5, color: "#f87171", cursor: "pointer", fontSize: 11, marginRight: 5 }}>🗑️</button>}
                     <button onClick={() => setEditRow(row)} onMouseEnter={e => showTooltip(e, "Editovat stavbu")} onMouseLeave={hideTooltip} style={{ padding: "3px 9px", background: "rgba(37,99,235,0.2)", border: "1px solid rgba(37,99,235,0.3)", borderRadius: 5, color: "#60a5fa", cursor: "pointer", fontSize: 11 }}>✏️</button>
-                    {!isDemo && <button onClick={() => setHistorieRow(row)} onMouseEnter={e => showTooltip(e, "Historie změn stavby")} onMouseLeave={hideTooltip} style={{ padding: "3px 9px", background: "rgba(168,85,247,0.15)", border: "1px solid rgba(168,85,247,0.3)", borderRadius: 5, color: "#c084fc", cursor: "pointer", fontSize: 11, marginLeft: 5 }}>🕐</button>}
+                    {!isDemo && <button onClick={() => {
+                      setHistorieRow(row);
+                      // Označit jako přečtené
+                      const SEEN_KEY = `historie_seen_${user?.email}`;
+                      const seen = JSON.parse(localStorage.getItem(SEEN_KEY) || "{}");
+                      seen[String(row.id)] = new Date().toISOString();
+                      localStorage.setItem(SEEN_KEY, JSON.stringify(seen));
+                      setHistorieNovinky(prev => { const n = {...prev}; delete n[String(row.id)]; return n; });
+                    }} onMouseEnter={e => showTooltip(e, "Historie změn stavby")} onMouseLeave={hideTooltip} style={{ padding: "3px 9px", background: "rgba(168,85,247,0.15)", border: "1px solid rgba(168,85,247,0.3)", borderRadius: 5, color: "#c084fc", cursor: "pointer", fontSize: 11, marginLeft: 5, position: "relative" }}>
+                      🕐{historieNovinky[String(row.id)] && <span style={{ position: "absolute", top: -3, right: -3, width: 8, height: 8, borderRadius: "50%", background: "#f97316", boxShadow: "0 0 6px #f97316, 0 0 12px rgba(249,115,22,0.6)", display: "block" }}/>}
+                    </button>}
                   </td>
                 )}
                 {COLUMNS.filter(col => col.key !== "id" && !col.hidden).map(col => {
