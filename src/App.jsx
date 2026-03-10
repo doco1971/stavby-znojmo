@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-// BUILD: 2026_03_10_build0028
+// BUILD: 2026_03_10_build0029
 // ============================================================
 // POZNÁMKY PRO CLAUDE (čti na začátku každé session)
 // ============================================================
@@ -181,6 +181,143 @@ function NativeSelect({ value, onChange, options, style, isDark = true }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ============================================================
+// HISTORIE ZMĚN MODAL
+// ============================================================
+const FIELD_LABELS = {
+  firma: "Firma", cislo_stavby: "Č. stavby", nazev_stavby: "Název stavby",
+  ps_i: "Plán. stavby I", snk_i: "SNK I", bo_i: "Běžné opravy I",
+  ps_ii: "Plán. stavby II", bo_ii: "Běžné opravy II", poruch: "Poruchy",
+  vyfakturovano: "Vyfakturováno", ukonceni: "Ukončení", zrealizovano: "Zrealizováno",
+  sod: "SOD", ze_dne: "Ze dne", objednatel: "Objednatel", stavbyvedouci: "Stavbyvedoucí",
+  nabidkova_cena: "Nab. cena", cislo_faktury: "Č. faktury", castka_bez_dph: "Č. bez DPH",
+  splatna: "Splatná", poznamka: "Poznámka",
+};
+
+function HistorieModal({ row, isDark, onClose }) {
+  const [zaznamy, setZaznamy] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        // Načteme log pro tuto stavbu — hledáme podle ID i názvu v detailu
+        const res = await sb(`log_aktivit?order=cas.desc&limit=200`);
+        const filtered = (res || []).filter(r =>
+          r.detail && (
+            r.detail.includes(`ID: ${row.id},`) ||
+            r.detail.includes(`ID: ${row.id}`) ||
+            r.detail.startsWith(row.nazev_stavby || "___NOMATCH___")
+          )
+        );
+        setZaznamy(filtered);
+      } catch { setZaznamy([]); }
+      finally { setLoading(false); }
+    };
+    load();
+  }, [row.id, row.nazev_stavby]);
+
+  const fmtCas = (cas) => {
+    if (!cas) return "";
+    const d = new Date(cas);
+    return d.toLocaleString("cs-CZ", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  };
+
+  // Parsuj JSON diff z detailu pokud existuje
+  const parseDetail = (detail) => {
+    if (!detail) return null;
+    try {
+      const jsonStart = detail.indexOf("{");
+      if (jsonStart === -1) return null;
+      return JSON.parse(detail.slice(jsonStart));
+    } catch { return null; }
+  };
+
+  const AKCE_STYLE = {
+    "Přidání stavby":  { bg: "rgba(34,197,94,0.15)",  border: "rgba(34,197,94,0.4)",  color: "#4ade80",  icon: "➕" },
+    "Editace stavby":  { bg: "rgba(251,191,36,0.12)",  border: "rgba(251,191,36,0.4)", color: "#fbbf24",  icon: "✏️" },
+    "Smazání stavby":  { bg: "rgba(239,68,68,0.12)",   border: "rgba(239,68,68,0.4)",  color: "#f87171",  icon: "🗑️" },
+  };
+
+  const modalBg  = isDark ? "#1e293b" : "#fff";
+  const textC    = isDark ? "#e2e8f0" : "#1e293b";
+  const mutedC   = isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.45)";
+  const borderC  = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)";
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 1300, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Segoe UI',sans-serif" }}>
+      <div style={{ background: modalBg, borderRadius: 18, width: "min(680px,96vw)", maxHeight: "88vh", display: "flex", flexDirection: "column", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`, boxShadow: "0 32px 80px rgba(0,0,0,0.6)" }}>
+        {/* header */}
+        <div style={{ padding: "16px 22px", borderBottom: `1px solid ${borderC}`, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div>
+            <h3 style={{ color: textC, margin: 0, fontSize: 16 }}>🕐 Historie změn</h3>
+            <div style={{ color: mutedC, fontSize: 12, marginTop: 3 }}>{row.cislo_stavby && <span style={{ fontWeight: 700, color: isDark ? "#60a5fa" : "#2563eb" }}>{row.cislo_stavby} · </span>}{row.nazev_stavby}</div>
+          </div>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: mutedC, fontSize: 20, cursor: "pointer", lineHeight: 1, marginLeft: 16 }}>✕</button>
+        </div>
+
+        {/* obsah */}
+        <div style={{ overflowY: "auto", flex: 1, padding: "16px 22px" }}>
+          {loading && <div style={{ textAlign: "center", color: mutedC, padding: 40 }}>Načítám historii...</div>}
+          {!loading && zaznamy.length === 0 && (
+            <div style={{ textAlign: "center", padding: 48 }}>
+              <div style={{ fontSize: 36, marginBottom: 12 }}>📭</div>
+              <div style={{ color: mutedC, fontSize: 14 }}>Žádné záznamy v historii</div>
+              <div style={{ color: mutedC, fontSize: 12, marginTop: 6 }}>Historie se zapisuje od tohoto buildu.</div>
+            </div>
+          )}
+          {!loading && zaznamy.map((z, i) => {
+            const style = AKCE_STYLE[z.akce] || { bg: "rgba(100,116,139,0.1)", border: "rgba(100,116,139,0.3)", color: "#94a3b8", icon: "•" };
+            const diff  = parseDetail(z.detail);
+            return (
+              <div key={i} style={{ marginBottom: 12, padding: "12px 14px", background: style.bg, border: `1px solid ${style.border}`, borderRadius: 10 }}>
+                {/* řádek: ikona akce + čas + uživatel */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: diff ? 10 : 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 14 }}>{style.icon}</span>
+                    <span style={{ color: style.color, fontWeight: 700, fontSize: 13 }}>{z.akce}</span>
+                    <span style={{ color: mutedC, fontSize: 12 }}>— {z.uzivatel}</span>
+                  </div>
+                  <span style={{ color: mutedC, fontSize: 11, whiteSpace: "nowrap", marginLeft: 12 }}>{fmtCas(z.cas)}</span>
+                </div>
+                {/* diff tabulka */}
+                {diff && diff.zmeny && diff.zmeny.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <thead>
+                        <tr>
+                          {["Pole","Původní hodnota","Nová hodnota"].map(h => (
+                            <th key={h} style={{ padding: "4px 8px", textAlign: "left", color: mutedC, fontWeight: 700, fontSize: 10, borderBottom: `1px solid ${borderC}` }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {diff.zmeny.map((z2, j) => (
+                          <tr key={j} style={{ borderBottom: `1px solid ${borderC}` }}>
+                            <td style={{ padding: "4px 8px", color: mutedC, fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>{FIELD_LABELS[z2.pole] || z2.pole}</td>
+                            <td style={{ padding: "4px 8px", color: "#f87171", fontSize: 11, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{z2.stare === "" || z2.stare == null ? <em style={{ opacity: 0.5 }}>prázdné</em> : String(z2.stare)}</td>
+                            <td style={{ padding: "4px 8px", color: "#4ade80", fontSize: 11, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{z2.nove === "" || z2.nove == null ? <em style={{ opacity: 0.5 }}>prázdné</em> : String(z2.nove)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {/* starý formát detailu bez diffu */}
+                {!diff && z.detail && <div style={{ color: mutedC, fontSize: 11, marginTop: 4 }}>{z.detail}</div>}
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ padding: "12px 22px", borderTop: `1px solid ${borderC}`, textAlign: "right" }}>
+          <button onClick={onClose} style={{ padding: "8px 20px", background: "linear-gradient(135deg,#2563eb,#1d4ed8)", border: "none", borderRadius: 8, color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Zavřít</button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1270,6 +1407,8 @@ export default function App() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   // ── Graf ──────────────────────────────────────────────────
   const [showGraf, setShowGraf] = useState(false);
+  // ── Historie změn ────────────────────────────────────────
+  const [historieRow, setHistorieRow] = useState(null);
   // ── Auto-logout ──────────────────────────────────────────
   const [autoLogoutWarning, setAutoLogoutWarning] = useState(false);
   const [autoLogoutCountdown, setAutoLogoutCountdown] = useState(60);
@@ -1616,8 +1755,14 @@ export default function App() {
       return;
     }
     try {
+      // Sestavit diff oproti aktuálním datům
+      const staryRow = data.find(r => r.id === id) || {};
+      const zmeny = Object.keys(fields)
+        .filter(k => k !== "id" && String(staryRow[k] ?? "") !== String(fields[k] ?? ""))
+        .map(k => ({ pole: k, stare: staryRow[k] ?? "", nove: fields[k] ?? "" }));
+      const detailJson = JSON.stringify({ nazev: fields.nazev_stavby, zmeny });
       await sb(`stavby?id=eq.${id}`, { method: "PATCH", body: JSON.stringify(fields) });
-      await logAkce(user?.email, "Editace stavby", `ID: ${id}, ${fields.nazev_stavby}`);
+      await logAkce(user?.email, "Editace stavby", `ID: ${id}, ${fields.nazev_stavby} ${detailJson}`);
       await loadAll();
     } catch (e) { showToast("Chyba uložení: " + e.message, "error"); }
     setEditRow(null);
@@ -2015,6 +2160,7 @@ export default function App() {
                   <td style={{ padding: "7px 11px", whiteSpace: "nowrap", border: `1px solid ${T.cellBorder}`, textAlign: "center" }}>
                     {isAdmin && <button onClick={() => setDeleteConfirm({ id: row.id, step: 1 })} onMouseEnter={e => showTooltip(e, "Smazat stavbu")} onMouseLeave={hideTooltip} style={{ padding: "3px 9px", background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 5, color: "#f87171", cursor: "pointer", fontSize: 11, marginRight: 5 }}>🗑️</button>}
                     <button onClick={() => setEditRow(row)} onMouseEnter={e => showTooltip(e, "Editovat stavbu")} onMouseLeave={hideTooltip} style={{ padding: "3px 9px", background: "rgba(37,99,235,0.2)", border: "1px solid rgba(37,99,235,0.3)", borderRadius: 5, color: "#60a5fa", cursor: "pointer", fontSize: 11 }}>✏️</button>
+                    {!isDemo && <button onClick={() => setHistorieRow(row)} onMouseEnter={e => showTooltip(e, "Historie změn stavby")} onMouseLeave={hideTooltip} style={{ padding: "3px 9px", background: "rgba(168,85,247,0.15)", border: "1px solid rgba(168,85,247,0.3)", borderRadius: 5, color: "#c084fc", cursor: "pointer", fontSize: 11, marginLeft: 5 }}>🕐</button>}
                   </td>
                 )}
                 {COLUMNS.filter(col => col.key !== "id" && !col.hidden).map(col => {
@@ -2112,7 +2258,7 @@ export default function App() {
                 { icon: "🌙", title: "Tmavý / světlý režim", text: "Přepínejte mezi 🌞 světlým a 🌙 tmavým režimem tlačítky v pravém horním rohu. Po najetí kurzorem se zobrazí název režimu." },
                 { icon: "↔️", title: "Šířky sloupců", text: "Táhněte ikonu ⟺ v záhlaví sloupce pro změnu šířky. Superadmin může resetovat šířky v Nastavení → Aplikace." },
                 { icon: "👥", title: "Role uživatelů", text: "USER – pouze zobrazení. USER EDITOR – může přidávat a editovat. ADMIN – plný přístup + správa uživatelů. SUPERADMIN – navíc nastavení aplikace." },
-                { icon: "💬", title: "Poznámka ke stavbě", text: "V editačním formuláři (sekce Poznámka) lze zapsat libovolný komentář. Pokud stavba poznámku má, zobrazí se ikona 💬 vedle názvu stavby v tabulce. Najeďte myší na ikonu pro zobrazení textu." },
+                { icon: "🕐", title: "Historie změn", text: "Tlačítko 🕐 v levém sloupci akcí otevře historii změn stavby. Zobrazí kdo a kdy editoval záznam, a přesně která pole se změnila (původní → nová hodnota). Historie se zapisuje automaticky od build0029." }, text: "V editačním formuláři (sekce Poznámka) lze zapsat libovolný komentář. Pokud stavba poznámku má, zobrazí se ikona 💬 vedle názvu stavby v tabulce. Najeďte myší na ikonu pro zobrazení textu." },
                 { icon: "📊", title: "Graf nákladů", text: "Tlačítko 📊 Graf ve filtrovací liště otevře sloupcový graf. Přepínač Firma / Měsíc mění způsob zobrazení. Graf zobrazuje Nabídku, Vyfakturováno a Zrealizováno – vždy jen pro aktuálně vyfiltrovaná data." },
                 { icon: "🔔", title: "Notifikace v prohlížeči", text: "Aplikace může zobrazovat upozornění na blížící se termíny i mimo otevřenou záložku. Po přihlášení prohlížeč zobrazí dialog – klikněte Povolit. Notifikace se odešlou pro stavby s termínem do 7 pracovních dní. Opakují se každých 60 minut, ale pouze pokud záložka není aktivní." },
                 { icon: "⏱️", title: "Automatické odhlášení", text: "Po 15 minutách nečinnosti (bez pohybu myši, klikání nebo psaní) se zobrazí varování s odpočítáváním 60 sekund. Klikněte na tlačítko Jsem tady pro pokračování, jinak dojde k automatickému odhlášení." },
@@ -2504,6 +2650,9 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* HISTORIE MODAL */}
+      {historieRow && <HistorieModal row={historieRow} isDark={isDark} onClose={() => setHistorieRow(null)} />}
 
       {/* GRAF MODAL */}
       {showGraf && <GrafModal data={filtered} firmy={firmy} isDark={isDark} onClose={() => setShowGraf(false)} />}
