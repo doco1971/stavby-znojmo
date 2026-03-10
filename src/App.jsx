@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-// BUILD: 2026_03_10_build0033
+// BUILD: 2026_03_10_build0034
 // ============================================================
 // POZNÁMKY PRO CLAUDE (čti na začátku každé session)
 // ============================================================
@@ -333,20 +333,22 @@ function HistorieModal({ row, isDark, onClose }) {
               w.document.close();
             }} style={{ padding: "7px 14px", background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 7, color: "#f87171", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>🖨️ PDF tisk</button>
 
-            {/* XLSX export */}
+            {/* XLSX export — jako HTML tabulka (.xls) */}
             <button onClick={() => {
-              const wsData = [["Akce","Datum a čas","Uživatel","Detail"]];
-              zaznamy.forEach(z => {
+              const headers = `<tr><th style="background:#1E3A8A;color:#fff;padding:6px 10px;border:1px solid #2563EB;font-size:10px">Akce</th><th style="background:#1E3A8A;color:#fff;padding:6px 10px;border:1px solid #2563EB;font-size:10px">Datum a čas</th><th style="background:#1E3A8A;color:#fff;padding:6px 10px;border:1px solid #2563EB;font-size:10px">Uživatel</th><th style="background:#1E3A8A;color:#fff;padding:6px 10px;border:1px solid #2563EB;font-size:10px">Detail změn</th></tr>`;
+              const AKCE_BG = { "Přidání stavby":"#dcfce7","Editace stavby":"#fef9c3","Smazání stavby":"#fee2e2" };
+              const rows = zaznamy.map((z, i) => {
                 const cas = z.cas ? new Date(z.cas).toLocaleString("cs-CZ") : "";
-                wsData.push([z.akce||"", cas, z.uzivatel||"", z.detail||""]);
-              });
-              import("xlsx").then(XLSX => {
-                const wb = XLSX.utils.book_new();
-                const ws = XLSX.utils.aoa_to_sheet(wsData);
-                XLSX.utils.book_append_sheet(wb, ws, "Historie");
-                XLSX.writeFile(wb, `historie_${row.cislo_stavby||row.id}_${new Date().toISOString().slice(0,10)}.xlsx`);
-              }).catch(() => alert("XLSX export není dostupný"));
-            }} style={{ padding: "7px 14px", background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: 7, color: "#4ade80", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>📊 XLSX</button>
+                const bg = AKCE_BG[z.akce] || (i%2===0?"#f8fafc":"#fff");
+                const diff = (() => { try { const s = z.detail?.indexOf("{"); return s>=0 ? JSON.parse(z.detail.slice(s)) : null; } catch { return null; } })();
+                const detail = diff?.zmeny?.map(x => `${FIELD_LABELS[x.pole]||x.pole}: ${x.stare} → ${x.nove}`).join("; ") || z.detail || "";
+                return `<tr><td style="padding:5px 8px;background:${bg};border:1px solid #E2E8F0;font-size:10px;font-weight:700">${z.akce||""}</td><td style="padding:5px 8px;background:${i%2===0?"#f8fafc":"#fff"};border:1px solid #E2E8F0;font-size:10px;white-space:nowrap">${cas}</td><td style="padding:5px 8px;background:${i%2===0?"#f8fafc":"#fff"};border:1px solid #E2E8F0;font-size:10px">${z.uzivatel||""}</td><td style="padding:5px 8px;background:${i%2===0?"#f8fafc":"#fff"};border:1px solid #E2E8F0;font-size:10px">${detail}</td></tr>`;
+              }).join("");
+              const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office"><head><meta charset="utf-8"></head><body><table><thead>${headers}</thead><tbody>${rows}</tbody></table></body></html>`;
+              const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8" });
+              const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+              a.download = `historie_${row.cislo_stavby||row.id}_${new Date().toISOString().slice(0,10)}.xls`; a.click();
+            }} style={{ padding: "7px 14px", background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: 7, color: "#4ade80", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>📊 Excel</button>
           </div>
           <button onClick={onClose} style={{ padding: "8px 20px", background: "linear-gradient(135deg,#2563eb,#1d4ed8)", border: "none", borderRadius: 8, color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Zavřít</button>
         </div>
@@ -420,20 +422,18 @@ function LogModal({ isDark, firmy, onClose }) {
 
   // ── exporty ──────────────────────────────────────────────
   const doXLSX = () => {
-    const wsData = [["Akce","Datum a čas","Uživatel","Č. stavby / Název","Detail změn"]];
-    filtered.forEach(z => {
+    const headers = `<tr><th style="background:#1E3A8A;color:#fff;padding:7px 10px;border:1px solid #2563EB;font-size:11px">Akce</th><th style="background:#1E3A8A;color:#fff;padding:7px 10px;border:1px solid #2563EB;font-size:11px">Datum a čas</th><th style="background:#1E3A8A;color:#fff;padding:7px 10px;border:1px solid #2563EB;font-size:11px">Uživatel</th><th style="background:#1E3A8A;color:#fff;padding:7px 10px;border:1px solid #2563EB;font-size:11px">Název stavby</th><th style="background:#1E3A8A;color:#fff;padding:7px 10px;border:1px solid #2563EB;font-size:11px">Detail změn</th></tr>`;
+    const rows = filtered.map((z, i) => {
       const diff = parseDetail(z.detail);
       const zmenyText = diff?.zmeny?.map(x => `${FIELD_LABELS[x.pole]||x.pole}: ${x.stare} → ${x.nove}`).join("; ") || z.detail || "";
       const nazev = diff?.nazev || z.detail?.replace(/^ID:\s*\d+,\s*/,"").split(" {")[0] || "";
-      wsData.push([z.akce||"", fmtCas(z.cas), z.uzivatel||"", nazev, zmenyText]);
-    });
-    import("xlsx").then(XLSX => {
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.aoa_to_sheet(wsData);
-      ws["!cols"] = [14,18,16,30,60].map(w => ({ wch: w }));
-      XLSX.utils.book_append_sheet(wb, ws, "Log zakázek");
-      XLSX.writeFile(wb, `log_zakazek_${new Date().toISOString().slice(0,10)}.xlsx`);
-    }).catch(() => alert("XLSX export není dostupný"));
+      const rowBg = i%2===0 ? "#f8fafc" : "#fff";
+      return `<tr><td style="padding:5px 10px;background:${rowBg};border:1px solid #E2E8F0;font-size:10px;font-weight:700">${z.akce||""}</td><td style="padding:5px 10px;background:${rowBg};border:1px solid #E2E8F0;font-size:10px;white-space:nowrap">${fmtCas(z.cas)}</td><td style="padding:5px 10px;background:${rowBg};border:1px solid #E2E8F0;font-size:10px">${z.uzivatel||""}</td><td style="padding:5px 10px;background:${rowBg};border:1px solid #E2E8F0;font-size:10px">${nazev}</td><td style="padding:5px 10px;background:${rowBg};border:1px solid #E2E8F0;font-size:10px">${zmenyText}</td></tr>`;
+    }).join("");
+    const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office"><head><meta charset="utf-8"></head><body><table><thead>${headers}</thead><tbody>${rows}</tbody></table></body></html>`;
+    const ts = new Date().toISOString().slice(0,10);
+    const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `log_zakazek_${ts}.xls`; a.click();
   };
 
   const doXLSColor = () => {
@@ -1656,13 +1656,11 @@ export default function App() {
   // ── Historie změn ────────────────────────────────────────
   const [historieRow, setHistorieRow] = useState(null);
   // ── Tečka nových změn v historii ─────────────────────────
-  // key = stavba id, value = true pokud má nepřečtené změny
   const [historieNovinky, setHistorieNovinky] = useState({});
-  // Načteme při loginu — pro každou stavbu zkontrolujeme poslední editaci
   useEffect(() => {
-    if (!user || isDemo) return;
+    if (!user || user.email === "demo") return;
     const SEEN_KEY = `historie_seen_${user.email}`;
-    const seen = JSON.parse(localStorage.getItem(SEEN_KEY) || "{}"); // { stavbaId: lastSeenCas }
+    const seen = JSON.parse(localStorage.getItem(SEEN_KEY) || "{}");
     const checkNovinky = async () => {
       try {
         const res = await sb(`log_aktivit?akce=eq.Editace stavby&order=cas.desc&limit=2000`);
@@ -1680,7 +1678,7 @@ export default function App() {
       } catch { /* tiché selhání */ }
     };
     checkNovinky();
-  }, [user, isDemo]);
+  }, [user]);
   // ── Auto-logout ──────────────────────────────────────────
   const [autoLogoutWarning, setAutoLogoutWarning] = useState(false);
   const [autoLogoutCountdown, setAutoLogoutCountdown] = useState(60);
