@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-// BUILD: 2026_03_10_build0029
+// BUILD: 2026_03_10_build0030
 // ============================================================
 // POZNÁMKY PRO CLAUDE (čti na začátku každé session)
 // ============================================================
@@ -2258,7 +2258,8 @@ export default function App() {
                 { icon: "🌙", title: "Tmavý / světlý režim", text: "Přepínejte mezi 🌞 světlým a 🌙 tmavým režimem tlačítky v pravém horním rohu. Po najetí kurzorem se zobrazí název režimu." },
                 { icon: "↔️", title: "Šířky sloupců", text: "Táhněte ikonu ⟺ v záhlaví sloupce pro změnu šířky. Superadmin může resetovat šířky v Nastavení → Aplikace." },
                 { icon: "👥", title: "Role uživatelů", text: "USER – pouze zobrazení. USER EDITOR – může přidávat a editovat. ADMIN – plný přístup + správa uživatelů. SUPERADMIN – navíc nastavení aplikace." },
-                { icon: "🕐", title: "Historie změn", text: "Tlačítko 🕐 v levém sloupci akcí otevře historii změn stavby. Zobrazí kdo a kdy editoval záznam, a přesně která pole se změnila (původní → nová hodnota). Historie se zapisuje automaticky od build0029." }, text: "V editačním formuláři (sekce Poznámka) lze zapsat libovolný komentář. Pokud stavba poznámku má, zobrazí se ikona 💬 vedle názvu stavby v tabulce. Najeďte myší na ikonu pro zobrazení textu." },
+                { icon: "🕐", title: "Historie změn", text: "Tlačítko 🕐 v levém sloupci akcí otevře historii změn stavby. Zobrazí kdo a kdy editoval záznam, a přesně která pole se změnila (původní → nová hodnota). Historie se zapisuje automaticky od build0029." },
+                { icon: "💬", title: "Poznámka ke stavbě", text: "V editačním formuláři (sekce Poznámka) lze zapsat libovolný komentář. Pokud stavba poznámku má, zobrazí se ikona 💬 vedle názvu stavby v tabulce. Najeďte myší na ikonu pro zobrazení textu." },
                 { icon: "📊", title: "Graf nákladů", text: "Tlačítko 📊 Graf ve filtrovací liště otevře sloupcový graf. Přepínač Firma / Měsíc mění způsob zobrazení. Graf zobrazuje Nabídku, Vyfakturováno a Zrealizováno – vždy jen pro aktuálně vyfiltrovaná data." },
                 { icon: "🔔", title: "Notifikace v prohlížeči", text: "Aplikace může zobrazovat upozornění na blížící se termíny i mimo otevřenou záložku. Po přihlášení prohlížeč zobrazí dialog – klikněte Povolit. Notifikace se odešlou pro stavby s termínem do 7 pracovních dní. Opakují se každých 60 minut, ale pouze pokud záložka není aktivní." },
                 { icon: "⏱️", title: "Automatické odhlášení", text: "Po 15 minutách nečinnosti (bez pohybu myši, klikání nebo psaní) se zobrazí varování s odpočítáváním 60 sekund. Klikněte na tlačítko Jsem tady pro pokračování, jinak dojde k automatickému odhlášení." },
