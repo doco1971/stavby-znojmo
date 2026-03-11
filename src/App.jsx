@@ -1238,6 +1238,7 @@ function FormModal({ title, initial, onSave, onClose, firmy, objednatele, stavby
                 <FormField label="Splatná 2" value={form["splatna_2"]} onChange={v => set("splatna_2", v)} type="date" />
               </div>
             </div>
+          </div>
         </div>
 
         {/* Poznámka */}
