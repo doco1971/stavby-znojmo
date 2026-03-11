@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-// BUILD: 2026_03_10_build0037
+// BUILD: 2026_03_10_build0038
 // ============================================================
 // POZNÁMKY PRO CLAUDE (čti na začátku každé session)
 // ============================================================
@@ -102,8 +102,13 @@ import * as XLSX from "xlsx";
 //   🎮 Demo banner: lepší kontrast, boxíčky s velkým písmem
 //   📜 Log RLS warning: tlačítko 📋 Kopírovat SQL příkazu
 //
-// BUILD0037 — aktualizace hlavičky:
-//   📝 Doplněny poznámky o všech buildech 0025–0036 do hlavičky souboru
+// BUILD0038 — demo jako admin + tečka při přihlášení:
+//   🎮 DEMO_USER role změněna user → admin (plný přístup)
+//   DEMO_MAX_STAVBY: 5 → 15, přidány 4 firmy, 4 stavbyvedoucí, 4 objednatele
+//   8 demo staveb pokrývající všechny stavy (zelená, červená, blížící se termín, poznámka)
+//   DEMO_USERS: 4 demo účty (admin, editor, user, superadmin) — viditelné v Nastavení
+//   🔴 Tečka se načítá jen při user změně (přihlášení) — useEffect([user])
+//      → rozsvítí se až po odhlášení a přihlášení, ne ihned po uložení
 // ============================================================
 // ============================================================
 // SUPABASE CONFIG
@@ -135,16 +140,24 @@ const logAkce = async (uzivatel, akce, detail = "") => {
 // ============================================================
 // DEMO MODE
 // ============================================================
-const DEMO_USER = { id: 0, email: "demo", password: "demo", role: "user", name: "Demo uživatel" };
+const DEMO_USER = { id: 0, email: "demo", password: "demo", role: "admin", name: "Demo administrátor" };
 const DEMO_FIRMY = [
   { hodnota: "Elektro s.r.o.", barva: "#3b82f6" },
   { hodnota: "Stavmont a.s.", barva: "#10b981" },
+  { hodnota: "VHS Znojmo", barva: "#f59e0b" },
+  { hodnota: "Silnice JM", barva: "#8b5cf6" },
 ];
 const DEMO_CISELNIKY = {
-  objednatele: ["Město Znojmo", "Jihomoravský kraj"],
-  stavbyvedouci: ["Jan Novák", "Petr Svoboda"],
+  objednatele: ["Město Znojmo", "Jihomoravský kraj", "MO ČR", "Správa silnic"],
+  stavbyvedouci: ["Jan Novák", "Petr Svoboda", "Marie Horáková", "Tomáš Blaha"],
 };
-const DEMO_MAX_STAVBY = 5;
+const DEMO_MAX_STAVBY = 15;
+const DEMO_USERS = [
+  { id: 1, email: "admin@demo.cz",   password: "demo", role: "admin",      name: "Admin Demo",    heslo: "demo" },
+  { id: 2, email: "editor@demo.cz",  password: "demo", role: "user_e",     name: "Editor Demo",   heslo: "demo" },
+  { id: 3, email: "user@demo.cz",    password: "demo", role: "user",       name: "Čtenář Demo",   heslo: "demo" },
+  { id: 4, email: "super@demo.cz",   password: "demo", role: "superadmin", name: "Superadmin Demo", heslo: "demo" },
+];
 
 const fmt = (n) => n == null || n === "" ? "" : Number(n).toLocaleString("cs-CZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtN = (n) => (n == null || n === "" || Number(n) === 0) ? "" : fmt(n);
@@ -923,7 +936,7 @@ function Login({ onLogin, users, onLogAction }) {
               <span style={{ color: "#fff", fontSize: 15, fontWeight: 800, letterSpacing: 1 }}>demo</span>
             </div>
           </div>
-          <div style={{ color: "#fde68a", fontSize: 11, marginTop: 8, fontWeight: 600 }}>Data se neukládají · Max 5 staveb · Jen v paměti</div>
+          <div style={{ color: "#fde68a", fontSize: 11, marginTop: 8, fontWeight: 600 }}>Plný přístup admin · Data se neukládají · Max 15 staveb</div>
         </div>
 
       </div>
@@ -1840,7 +1853,7 @@ export default function App() {
 
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
   const isSuperAdmin = user?.role === "superadmin";
-  const isEditor = user?.role === "user_e" || isAdmin || user?.email === "demo";
+  const isEditor = user?.role === "user_e" || isAdmin;
   const isDemo = user?.email === "demo";
 
   // ── Šířky sloupců (jen superadmin) ─────────────────────────
@@ -1917,16 +1930,29 @@ export default function App() {
     if (isDemo) {
       const dnes = new Date();
       const fmtDate = (d) => `${d.getDate().toString().padStart(2,"0")}.${(d.getMonth()+1).toString().padStart(2,"0")}.${d.getFullYear()}`;
+      const za5  = new Date(dnes); za5.setDate(za5.getDate() + 5);
       const za10 = new Date(dnes); za10.setDate(za10.getDate() + 10);
+      const za25 = new Date(dnes); za25.setDate(za25.getDate() + 25);
+      const za45 = new Date(dnes); za45.setDate(za45.getDate() + 45);
+      const pred5  = new Date(dnes); pred5.setDate(pred5.getDate() - 5);
+      const pred10 = new Date(dnes); pred10.setDate(pred10.getDate() - 10);
       const pred30 = new Date(dnes); pred30.setDate(pred30.getDate() - 30);
+      const pred60 = new Date(dnes); pred60.setDate(pred60.getDate() - 60);
       const demoStavby = [
-        computeRow({ id:1, firma:"Elektro s.r.o.", cislo_stavby:"ZN-2025-001", nazev_stavby:"Rekonstrukce VO Pražská", ps_i:850000, snk_i:120000, bo_i:0, ps_ii:0, bo_ii:0, poruch:45000, vyfakturovano:720000, ukonceni:fmtDate(za10), zrealizovano:680000, sod:"SOD-2025-14", ze_dne:"15.01.2025", objednatel:"Město Znojmo", stavbyvedouci:"Jan Novák", nabidkova_cena:1015000, cislo_faktury:"FAK-2025-031", castka_bez_dph:594000, splatna:"28.02.2025" }),
-        computeRow({ id:2, firma:"Stavmont a.s.", cislo_stavby:"ZN-2025-002", nazev_stavby:"Oprava kanalizace Dvořákova", ps_i:0, snk_i:0, bo_i:320000, ps_ii:0, bo_ii:180000, poruch:0, vyfakturovano:0, ukonceni:fmtDate(pred30), zrealizovano:0, sod:"SOD-2025-22", ze_dne:"10.02.2025", objednatel:"Jihomoravský kraj", stavbyvedouci:"Petr Svoboda", nabidkova_cena:500000, cislo_faktury:"", castka_bez_dph:0, splatna:"" }),
+        computeRow({ id:1, firma:"Elektro s.r.o.",  cislo_stavby:"ZN-I-2025-001",  nazev_stavby:"Rekonstrukce VO Pražská",          ps_i:850000,  snk_i:120000, bo_i:0,      ps_ii:0,      bo_ii:0,      poruch:45000,  vyfakturovano:720000,  ukonceni:fmtDate(za10),  zrealizovano:680000,  sod:"SOD-2025-014", ze_dne:"15.01.2025", objednatel:"Město Znojmo",       stavbyvedouci:"Jan Novák",       nabidkova_cena:1015000, cislo_faktury:"FAK-2025-031", castka_bez_dph:594000,  splatna:"28.02.2025", poznamka:"Práce probíhají dle harmonogramu, zbývá dokončit úsek u náměstí." }),
+        computeRow({ id:2, firma:"Stavmont a.s.",   cislo_stavby:"ZN-I-2025-002",  nazev_stavby:"Oprava kanalizace Dvořákova",      ps_i:0,       snk_i:0,      bo_i:320000, ps_ii:0,      bo_ii:180000, poruch:0,      vyfakturovano:0,       ukonceni:fmtDate(pred30), zrealizovano:0,      sod:"SOD-2025-022", ze_dne:"10.02.2025", objednatel:"Jihomoravský kraj",  stavbyvedouci:"Petr Svoboda",    nabidkova_cena:500000,  cislo_faktury:"",             castka_bez_dph:0,       splatna:"",           poznamka:"" }),
+        computeRow({ id:3, firma:"VHS Znojmo",      cislo_stavby:"ZN-II-2025-003", nazev_stavby:"Výměna vodovodního řadu Horní",    ps_i:0,       snk_i:0,      bo_i:0,      ps_ii:640000, bo_ii:0,      poruch:95000,  vyfakturovano:640000,  ukonceni:fmtDate(pred5),  zrealizovano:640000,  sod:"SOD-2025-031", ze_dne:"05.03.2025", objednatel:"Město Znojmo",       stavbyvedouci:"Marie Horáková",  nabidkova_cena:735000,  cislo_faktury:"FAK-2025-044", castka_bez_dph:528000,  splatna:"30.04.2025", poznamka:"" }),
+        computeRow({ id:4, firma:"Silnice JM",      cislo_stavby:"ZN-I-2025-004",  nazev_stavby:"Oprava komunikace Přímětická",    ps_i:1200000, snk_i:0,      bo_i:85000,  ps_ii:0,      bo_ii:0,      poruch:0,      vyfakturovano:950000,  ukonceni:fmtDate(za25),  zrealizovano:900000,  sod:"SOD-2025-041", ze_dne:"20.03.2025", objednatel:"Správa silnic",      stavbyvedouci:"Tomáš Blaha",     nabidkova_cena:1285000, cislo_faktury:"",             castka_bez_dph:0,       splatna:"",           poznamka:"Pozor — změna trasy v úseku km 1,2–1,8, nutné nové povolení." }),
+        computeRow({ id:5, firma:"Elektro s.r.o.",  cislo_stavby:"ZN-II-2025-005", nazev_stavby:"Rozšíření sítě NN Citonice",       ps_i:0,       snk_i:0,      bo_i:0,      ps_ii:380000, bo_ii:210000, poruch:30000,  vyfakturovano:380000,  ukonceni:fmtDate(pred60), zrealizovano:380000,  sod:"SOD-2025-052", ze_dne:"01.01.2025", objednatel:"MO ČR",              stavbyvedouci:"Jan Novák",       nabidkova_cena:620000,  cislo_faktury:"FAK-2025-018", castka_bez_dph:314000,  splatna:"15.02.2025", poznamka:"" }),
+        computeRow({ id:6, firma:"Stavmont a.s.",   cislo_stavby:"ZN-I-2025-006",  nazev_stavby:"Revitalizace parku Smetanovo nám.", ps_i:560000, snk_i:75000,  bo_i:0,      ps_ii:0,      bo_ii:0,      poruch:0,      vyfakturovano:0,       ukonceni:fmtDate(za45),  zrealizovano:0,      sod:"SOD-2025-061", ze_dne:"01.04.2025", objednatel:"Město Znojmo",       stavbyvedouci:"Petr Svoboda",    nabidkova_cena:635000,  cislo_faktury:"",             castka_bez_dph:0,       splatna:"",           poznamka:"" }),
+        computeRow({ id:7, firma:"VHS Znojmo",      cislo_stavby:"ZN-II-2025-007", nazev_stavby:"ČOV — rozšíření kapacity",         ps_i:0,       snk_i:0,      bo_i:0,      ps_ii:2100000,bo_ii:340000, poruch:180000, vyfakturovano:1800000, ukonceni:fmtDate(za5),   zrealizovano:1750000, sod:"SOD-2025-071", ze_dne:"15.02.2025", objednatel:"Jihomoravský kraj",  stavbyvedouci:"Marie Horáková",  nabidkova_cena:2620000, cislo_faktury:"FAK-2025-056", castka_bez_dph:1487000, splatna:"31.05.2025", poznamka:"Finální přejímka naplánována na konec května." }),
+        computeRow({ id:8, firma:"Silnice JM",      cislo_stavby:"ZN-I-2025-008",  nazev_stavby:"SNK Znojmo — sítě pro RD",         ps_i:0,       snk_i:430000, bo_i:0,      ps_ii:0,      bo_ii:0,      poruch:0,      vyfakturovano:430000,  ukonceni:fmtDate(pred10), zrealizovano:430000,  sod:"SOD-2025-082", ze_dne:"10.03.2025", objednatel:"Správa silnic",      stavbyvedouci:"Tomáš Blaha",     nabidkova_cena:430000,  cislo_faktury:"FAK-2025-062", castka_bez_dph:355000,  splatna:"30.04.2025", poznamka:"" }),
       ];
       setData(demoStavby);
       setFirmy(DEMO_FIRMY);
       setObjednatele(DEMO_CISELNIKY.objednatele);
       setStavbyvedouci(DEMO_CISELNIKY.stavbyvedouci);
+      setUsers(DEMO_USERS);
       setLoading(false);
       return;
     }
@@ -2380,7 +2406,7 @@ export default function App() {
       )}
       {isDemo && (
         <div style={{ background: "linear-gradient(90deg,#b45309,#d97706)", color: "#fff", textAlign: "center", padding: "6px 16px", fontSize: 12, fontWeight: 700, letterSpacing: 0.5, flexShrink: 0 }}>
-          🎮 DEMO VERZE — data se neukládají, maximum {DEMO_MAX_STAVBY} staveb ({data.length}/{DEMO_MAX_STAVBY})
+          🎮 DEMO VERZE — plný přístup admin, data se neukládají, maximum {DEMO_MAX_STAVBY} staveb ({data.length}/{DEMO_MAX_STAVBY})
         </div>
       )}
 
