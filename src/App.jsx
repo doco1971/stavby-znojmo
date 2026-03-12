@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-// BUILD: 2026_03_12_build0065
-// ============================================================ 
+// BUILD: 2026_03_12_build0066
+// ============================================================
 // POZNÁMKY PRO CLAUDE (čti na začátku každé session)
 // ============================================================
 // PRAVIDLO: Každá změna = dva soubory:
@@ -145,7 +145,8 @@ import * as XLSX from "xlsx";
 // BUILD0062 — 2 opravy: td overflow:hidden pro truncate, reset shownDeadlineOnce
 // BUILD0063 — th maxWidth odstraněn, nápověda e/S s barvami
 // BUILD0064 — FIX: ikona ⟺ flex space-between, objednatel/SV wider
-// BUILD0065 — 2 věci
+// BUILD0065 — strankovani −/+ vzdy viditelne, glow v napovede (tecka, e/S)
+// BUILD0066 — glow na VSECH emoji v cele napovede (auto regex v renderu)
 //   1. FIX stránkování: tlačítka −/+ vždy viditelná (přesunuta mimo totalPages>1)
 //   2. Nápověda: glow ikony — 🔴 tečka, ⚠️ červeně, 💬, zelený řádek, e/S
 //   th bez overflow/maxWidth, flex space-between (text ell. | ikona vždy viditelná)
@@ -3038,12 +3039,35 @@ export default function App() {
                 { icon: "🔍", title: "Rozšířený filtr", text: "Tlačítko Filtr ▾ otevře plovoucí panel s rozšířenými možnostmi: rok uvedení do provozu, rozsah nabídkové ceny (od/do), prošlé termíny bez faktury, stav fakturace a kategorie I / II. Panel lze přetáhnout myší kamkoliv na plochu." },
                 { icon: "📥", title: "Import staveb", text: "Tlačítko 📥 Import (pouze superadmin) načte stavby z Excelu — podporuje původní tabulkový formát i zálohu DB. Před importem systém zobrazí náhled a umožní potvrdit nebo zrušit. Existující záznamy se aktualizují, nové přidají." },
                 { icon: "🧾", title: "Označení faktur", text: <span>Červené <span style={{fontWeight:700,color:"#ef4444",textShadow:"0 0 6px #ef4444"}}>e</span> před číslem faktury = E.ON (sdružená dodávka). Žluté <span style={{fontWeight:700,color:"#facc15",textShadow:"0 0 6px #facc15"}}>S</span> před druhým číslem faktury = faktura sdružení. Druhá faktura se zobrazí jako druhý řádek v buňce (přerušovaná čára).</span> },
-              ].map(({ icon, title, text }) => (
-                <div key={title} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                  <div style={{ fontWeight: 700, marginBottom: 3, color: "#60a5fa" }}>{icon} {title}</div>
-                  <div style={{ color: "rgba(255,255,255,0.62)", fontSize: 12 }}>{text}</div>
-                </div>
-              ))}
+              ].map(({ icon, title, text }) => {
+                const emojiRe = /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu;
+                const glowEmoji = (str) => {
+                  if (typeof str !== "string") return str;
+                  const parts = [];
+                  let last = 0, m;
+                  emojiRe.lastIndex = 0;
+                  while ((m = emojiRe.exec(str)) !== null) {
+                    if (m.index > last) parts.push(str.slice(last, m.index));
+                    parts.push(<span key={m.index} style={{ filter: "drop-shadow(0 0 5px rgba(96,165,250,0.85)) drop-shadow(0 0 10px rgba(96,165,250,0.4))", display: "inline-block" }}>{m[0]}</span>);
+                    last = m.index + m[0].length;
+                  }
+                  if (last < str.length) parts.push(str.slice(last));
+                  return parts.length > 1 ? parts : str;
+                };
+                const glowNode = (node) => {
+                  if (typeof node === "string") return glowEmoji(node);
+                  if (!node || typeof node !== "object" || !node.props) return node;
+                  const kids = node.props.children;
+                  const newKids = Array.isArray(kids) ? kids.map(glowNode) : glowNode(kids);
+                  return { ...node, props: { ...node.props, children: newKids } };
+                };
+                return (
+                  <div key={title} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div style={{ fontWeight: 700, marginBottom: 3, color: "#60a5fa" }}><span style={{ filter: "drop-shadow(0 0 5px rgba(96,165,250,0.85))", display: "inline-block", fontSize: 16 }}>{icon}</span> {title}</div>
+                    <div style={{ color: "rgba(255,255,255,0.62)", fontSize: 12 }}>{typeof text === "string" ? glowEmoji(text) : glowNode(text)}</div>
+                  </div>
+                );
+              })}
             </div>
             <div style={{ padding: "11px 22px", borderTop: "1px solid rgba(255,255,255,0.08)", textAlign: "right", background: "rgba(255,255,255,0.02)" }}>
               <button onClick={() => setShowHelp(false)} style={{ padding: "8px 20px", background: "linear-gradient(135deg,#2563eb,#1d4ed8)", border: "none", borderRadius: 8, color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Zavřít</button>
