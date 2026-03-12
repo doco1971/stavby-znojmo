@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-// BUILD: 2026_03_12_build0057
+// BUILD: 2026_03_12_build0058
 // ============================================================
 // POZNÁMKY PRO CLAUDE (čti na začátku každé session)
 // ============================================================
@@ -134,6 +134,10 @@ import * as XLSX from "xlsx";
 // BUILD0056 — FIX build error: renderBars HTML legenda mimo return
 //   Přidán React fragment <> kolem svg+legenda
 // BUILD0057 — 3 opravy filtrovací lišty a grafu
+//   Graf labels horizontal, Export NativeSelect, height 28px
+// BUILD0058 — FIX: graf labels stále šikmé + export menu příliš úzké
+//   labels: rotate odstraněn, textAnchor middle, font 11 bold
+//   NativeSelect dropdown: minWidth max(šířka tlačítka, 220px)
 //   1. Graf: firma labels horizontálně, font 9→11, fontWeight 600
 //   2. Export: custom dropdown → NativeSelect (stejný styl jako filtry)
 //   3. Všechna tlačítka lišty: height: 28px (sjednocená výška)
@@ -296,7 +300,7 @@ function NativeSelect({ value, onChange, options, style, isDark = true }) {
         <span style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", fontSize: 9, color: isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.45)", pointerEvents: "none" }}>▼</span>
       </button>
       {open && (
-        <div style={{ position: "fixed", top: dropUp ? "auto" : dropPos.top, bottom: dropUp ? window.innerHeight - dropPos.top : "auto", left: dropPos.left, width: dropPos.width, background: dropBg, border: `1px solid ${border}`, borderRadius: 8, zIndex: 9999, boxShadow: dropShadow, overflow: "auto", maxHeight: 280 }}>
+        <div style={{ position: "fixed", top: dropUp ? "auto" : dropPos.top, bottom: dropUp ? window.innerHeight - dropPos.top : "auto", left: dropPos.left, minWidth: Math.max(dropPos.width, 220), background: dropBg, border: `1px solid ${border}`, borderRadius: 8, zIndex: 9999, boxShadow: dropShadow, overflow: "auto", maxHeight: 280 }}>
           {options.map(o => (
             <div key={o} onClick={() => { onChange(o); setOpen(false); }}
               style={{ padding: "9px 14px", color: o === value ? (isDark ? "#60a5fa" : "#2563eb") : textColor, background: o === value ? (isDark ? "rgba(37,99,235,0.15)" : "rgba(37,99,235,0.08)") : "transparent", cursor: "pointer", fontSize: 13, whiteSpace: "nowrap" }}
@@ -845,8 +849,8 @@ function GrafModal({ data, firmy, isDark, onClose }) {
         {/* x labels */}
         {grafData.map((d, gi) => {
           const cx  = PAD_L + gi * groupW + groupW / 2;
-          const lbl = d.name.length > 13 ? d.name.slice(0, 12) + "…" : d.name;
-          return <text key={gi} x={cx} y={H - PAD_B + 16} textAnchor="end" fill={mutedC} fontSize={9} transform={`rotate(-28, ${cx}, ${H - PAD_B + 16})`}>{lbl}</text>;
+          const lbl = d.name.length > 16 ? d.name.slice(0, 15) + "…" : d.name;
+          return <text key={gi} x={cx} y={H - PAD_B + 18} textAnchor="middle" fill={mutedC} fontSize={11} fontWeight={600}>{lbl}</text>;
         })}
         {/* legend */}
         {isKat ? (
