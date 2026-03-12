@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-// BUILD: 2026_03_12_build0054
+// BUILD: 2026_03_12_build0055
 // ============================================================
 // POZNÁMKY PRO CLAUDE (čti na začátku každé session)
 // ============================================================
@@ -128,6 +128,11 @@ import * as XLSX from "xlsx";
 // BUILD0053 — Dva pohledy + oprava filtru Kat. II + barevné grafy
 //   📋 Stránky / 📜 Vše, filterKat II fix, stacked graf, barevná tabulka
 // BUILD0054 — FIX export dropdown překrytý tabulkou
+//   position:fixed + getBoundingClientRect, click toggle, kompaktní lišta
+// BUILD0055 — FIX legenda grafu Kat. I/II
+//   Legenda přesunuta z SVG do HTML pod grafem
+//   Kat. I a Kat. II každá ve svém řádku se svými barvami
+//   SVG PAD_B: 100→30, H: 340→280 (více místa pro sloupce)
 //   zIndex dropdown: 200 → 1100, overlay: 199 → 1099
 //   Export přepnut z hover na click toggle (spolehlivější)
 //   📋 Stránky / 📜 Vše — přepínač v filtrovací liště
@@ -779,7 +784,7 @@ function GrafModal({ data, firmy, isDark, onClose }) {
       : Math.max(...KEYS.map(k => d[k] || 0))
     ), 1);
 
-    const W = 700, H = 340, PAD_L = 68, PAD_B = 100, PAD_T = 20, PAD_R = 20;
+    const W = 700, H = 280, PAD_L = 68, PAD_B = 30, PAD_T = 20, PAD_R = 20;
     const chartW = W - PAD_L - PAD_R;
     const chartH = H - PAD_T - PAD_B;
     const groupW = chartW / Math.max(grafData.length, 1);
@@ -789,7 +794,7 @@ function GrafModal({ data, firmy, isDark, onClose }) {
     const offsets = Array.from({length: numBars}, (_,ki) => (ki - (numBars-1)/2) * (barW + 4));
 
     return (
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 340 }}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 280, minWidth: 500 }}>
         {/* grid */}
         {[0, 0.25, 0.5, 0.75, 1].map(p => {
           const y = PAD_T + p * chartH;
@@ -837,33 +842,46 @@ function GrafModal({ data, firmy, isDark, onClose }) {
         {/* legend */}
         {isKat ? (
           <g>
-            {/* KAT I legend */}
-            {KAT_I_LABELS.map((l,i) => (
-              <g key={l} transform={`translate(${PAD_L + i * 110}, ${H - PAD_B + 30})`}>
-                <rect width={10} height={10} fill={KAT_I_COLORS[i]} rx={2}/>
-                <text x={13} y={9} fill={mutedC} fontSize={9}>{l}</text>
-              </g>
-            ))}
-            {/* KAT II legend */}
-            {KAT_II_LABELS.map((l,i) => (
-              <g key={l} transform={`translate(${PAD_L + i * 110}, ${H - PAD_B + 46})`}>
-                <rect width={10} height={10} fill={KAT_II_COLORS[i]} rx={2}/>
-                <text x={13} y={9} fill={mutedC} fontSize={9}>{l}</text>
-              </g>
-            ))}
-            {/* Separator labels */}
-            <text x={PAD_L} y={H - PAD_B + 24} fill={isDark ? "#818cf8" : "#4f46e5"} fontSize={9} fontWeight={700}>── KAT. I ──</text>
-            <text x={PAD_L + 340} y={H - PAD_B + 24} fill={isDark ? "#fb923c" : "#ea580c"} fontSize={9} fontWeight={700}>── KAT. II ──</text>
+            {/* legend moved to HTML below SVG */}
           </g>
-        ) : (
-          LABELS.map((l, i) => (
-            <g key={l} transform={`translate(${PAD_L + i * 140}, ${H - 10})`}>
-              <rect width={10} height={10} fill={COLORS[i]} rx={2}/>
-              <text x={14} y={9} fill={mutedC} fontSize={10}>{l}</text>
-            </g>
-          ))
-        )}
+        ) : null}
       </svg>
+      {/* HTML Legend */}
+      {isKat ? (
+        <div style={{ display: "flex", gap: 24, padding: "10px 16px 4px", flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: isDark ? "#818cf8" : "#4f46e5", marginBottom: 5, letterSpacing: 0.5 }}>── KAT. I ──</div>
+            <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+              {KAT_I_LABELS.map((l,i) => (
+                <div key={l} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <div style={{ width: 11, height: 11, borderRadius: 3, background: KAT_I_COLORS[i], flexShrink: 0 }}/>
+                  <span style={{ fontSize: 11, color: mutedC }}>{l}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: isDark ? "#fb923c" : "#ea580c", marginBottom: 5, letterSpacing: 0.5 }}>── KAT. II ──</div>
+            <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+              {KAT_II_LABELS.map((l,i) => (
+                <div key={l} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <div style={{ width: 11, height: 11, borderRadius: 3, background: KAT_II_COLORS[i], flexShrink: 0 }}/>
+                  <span style={{ fontSize: 11, color: mutedC }}>{l}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: "flex", gap: 14, padding: "10px 16px 4px", flexWrap: "wrap" }}>
+          {LABELS.map((l,i) => (
+            <div key={l} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <div style={{ width: 11, height: 11, borderRadius: 3, background: COLORS[i], flexShrink: 0 }}/>
+              <span style={{ fontSize: 11, color: mutedC }}>{l}</span>
+            </div>
+          ))}
+        </div>
+      )}
     );
   };
 
