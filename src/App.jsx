@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-// BUILD: 2026_03_12_build0068
+// BUILD: 2026_03_12_build0069
 // ============================================================
 // POZNÁMKY PRO CLAUDE (čti na začátku každé session)
 // ============================================================
@@ -148,7 +148,8 @@ import * as XLSX from "xlsx";
 // BUILD0065 — strankovani −/+ vzdy viditelne, glow v napovede (tecka, e/S)
 // BUILD0066 — glow emoji v napovede (drop-shadow)
 // BUILD0067 — brightness(1.6)
-// BUILD0068 — brightness(2) + white glow drop-shadow
+// BUILD0068 — brightness(2) + white glow (prilis agresivni)
+// BUILD0069 — nadpisova ikona brightness(1.4), ikony v textu bez filtru
 //   1. FIX stránkování: tlačítka −/+ vždy viditelná (přesunuta mimo totalPages>1)
 //   2. Nápověda: glow ikony — 🔴 tečka, ⚠️ červeně, 💬, zelený řádek, e/S
 //   th bez overflow/maxWidth, flex space-between (text ell. | ikona vždy viditelná)
@@ -3050,7 +3051,7 @@ export default function App() {
                   emojiRe.lastIndex = 0;
                   while ((m = emojiRe.exec(str)) !== null) {
                     if (m.index > last) parts.push(str.slice(last, m.index));
-                    parts.push(<span key={m.index} style={{ filter: "brightness(2) drop-shadow(0 0 6px rgba(255,255,255,0.6))", display: "inline-block" }}>{m[0]}</span>);
+                    parts.push(<span key={m.index} style={{ display: "inline-block" }}>{m[0]}</span>);
                     last = m.index + m[0].length;
                   }
                   if (last < str.length) parts.push(str.slice(last));
@@ -3065,7 +3066,7 @@ export default function App() {
                 };
                 return (
                   <div key={title} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                    <div style={{ fontWeight: 700, marginBottom: 3, color: "#60a5fa" }}><span style={{ filter: "brightness(2) drop-shadow(0 0 6px rgba(255,255,255,0.6))", display: "inline-block", fontSize: 16 }}>{icon}</span> {title}</div>
+                    <div style={{ fontWeight: 700, marginBottom: 3, color: "#60a5fa" }}><span style={{ filter: "brightness(1.4)", display: "inline-block", fontSize: 16 }}>{icon}</span> {title}</div>
                     <div style={{ color: "rgba(255,255,255,0.62)", fontSize: 12 }}>{typeof text === "string" ? glowEmoji(text) : glowNode(text)}</div>
                   </div>
                 );
