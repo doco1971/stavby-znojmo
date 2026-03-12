@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-// BUILD: 2026_03_11_build0046
+// BUILD: 2026_03_12_build0047
 // ============================================================
 // POZNÁMKY PRO CLAUDE (čti na začátku každé session)
 // ============================================================
@@ -97,6 +97,7 @@ import * as XLSX from "xlsx";
 //   Faktura 2 chyběla v COLUMNS/editaci/tabulce — obnovena kompletně
 //   FIX syntax error: chybějící </div> po sekci Faktura 2 v EditModal
 // BUILD0045 — Aktualizace hlavičky pro nové session (jen dokumentace)
+// BUILD0047 — 🧾 ikona před č. faktury 1 i 2 v tabulce (opacity 0.7, fontSize 11)
 // BUILD0046 — FIX: Faktura 2 v buňce stejný font jako Faktura 1, skryté sloupce
 //   Č. FAKTURY 2 / Č. BEZ DPH 2 / SPLATNÁ 2 zmizely z hlavičky (hidden filter)
 //   colgroup + thead: přidán filtr !col.hidden (chyběl, data ho měly)
@@ -2765,11 +2766,12 @@ export default function App() {
                           : col.type === "number" ? fmtN(row[col.key])
                           : col.truncate ? <span title={row[col.key] ?? ""} style={{ display: "inline-block", maxWidth: col.width - 22, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", verticalAlign: "middle" }}>{row[col.key] ?? ""}</span>
                           : isOverdue ? <span>⚠️ {row[col.key]}</span>
+                          : col.key === "cislo_faktury" && row[col.key] ? <span><span style={{ fontSize: 11, marginRight: 3, opacity: 0.7 }}>🧾</span>{row[col.key]}</span>
                           : row[col.key] ?? ""}
                         </div>
                         {/* Druhý řádek pro fakturační sloupce */}
                         {col.key === "cislo_faktury" && row.cislo_faktury_2 && (
-                          <div style={{ borderTop: `1px dashed ${T.cellBorder}`, marginTop: 2, paddingTop: 2 }}>{row.cislo_faktury_2}</div>
+                          <div style={{ borderTop: `1px dashed ${T.cellBorder}`, marginTop: 2, paddingTop: 2 }}><span style={{ fontSize: 11, marginRight: 3, opacity: 0.7 }}>🧾</span>{row.cislo_faktury_2}</div>
                         )}
                         {col.key === "castka_bez_dph" && row.castka_bez_dph_2 > 0 && (
                           <div style={{ borderTop: `1px dashed ${T.cellBorder}`, marginTop: 2, paddingTop: 2 }}>{fmtN(row.castka_bez_dph_2)}</div>
