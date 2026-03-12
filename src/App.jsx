@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-// BUILD: 2026_03_12_build0061
+// BUILD: 2026_03_12_build0062
 // ============================================================
 // POZNÁMKY PRO CLAUDE (čti na začátku každé session)
 // ============================================================
@@ -141,6 +141,10 @@ import * as XLSX from "xlsx";
 // BUILD0060 — FIX: resize sloupce nepustí za header text
 //   th: minWidth:0 + maxWidth:getColWidth, input max 2000px
 // BUILD0061 — Doplnění nápovědy o nové funkce (BUILD0043–0060)
+//   Přidány sekce: Dva pohledy, Rozšířený filtr, Import, Označení faktur e/S
+// BUILD0062 — 2 opravy
+//   1. Resize sloupce Objednatel/Stavbyvedoucí: td overflow:hidden + maxWidth
+//   2. Termíny se nezobrazí po přepnutí účtu: reset shownDeadlineOnce při změně user
 //   Přidáno: Dva pohledy, Rozšířený filtr, Import staveb, Označení faktur e/S
 //   Upraveno: Šířky sloupců (max 2000px, zadání číslem)
 //   th: minWidth:0 + maxWidth:getColWidth → fixed layout respektuje col šířku
@@ -2214,6 +2218,8 @@ export default function App() {
   }, [data]);
 
   const shownDeadlineOnce = useRef(false);
+  // Reset při změně uživatele
+  useEffect(() => { shownDeadlineOnce.current = false; shownOrphanOnce.current = false; }, [user?.email]);
   useEffect(() => {
     if (user && user.email !== "demo" && !shownDeadlineOnce.current && deadlineWarnings.length > 0) {
       shownDeadlineOnce.current = true;
@@ -2897,7 +2903,7 @@ export default function App() {
                   return (
                     <td key={col.key}
                       className={col.key === "rozdil" || col.type === "number" ? "colored-cell" : ""}
-                      style={{ padding: "5px 11px", whiteSpace: "nowrap", textAlign: align, border: `1px solid ${T.cellBorder}`, color: isOverdue ? "#f87171" : col.key === "rozdil" ? (Number(row[col.key]) >= 0 ? "#4ade80" : "#f87171") : col.type === "number" ? T.numColor : T.text, fontWeight: isOverdue ? 700 : "inherit", background: isOverdue ? "rgba(239,68,68,0.18)" : undefined }}
+                      style={{ padding: "5px 11px", whiteSpace: "nowrap", textAlign: align, border: `1px solid ${T.cellBorder}`, color: isOverdue ? "#f87171" : col.key === "rozdil" ? (Number(row[col.key]) >= 0 ? "#4ade80" : "#f87171") : col.type === "number" ? T.numColor : T.text, fontWeight: isOverdue ? 700 : "inherit", background: isOverdue ? "rgba(239,68,68,0.18)" : undefined, overflow: col.truncate ? "hidden" : undefined, maxWidth: col.truncate ? getColWidth(col) : undefined }}
                     >
                       <div>
                         <div>
