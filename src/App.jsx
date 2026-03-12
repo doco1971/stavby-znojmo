@@ -105,7 +105,9 @@ import * as XLSX from "xlsx";
 // BUILD0047 — Označení faktur: červené "e" (E.ON) před Fakturou 1, žluté "S" (sdružení) před Fakturou 2
 //   Nápověda doplněna: sekce 🧾 Označení faktur
 // BUILD0048 — 🔍 Rozšířený filtr: rok, rozsah nab. ceny, prošlé termíny bez faktury
-//   Rozbalovací panel pod filtrační lištou, stávající filtry zachovány
+//   Plovoucí přetahovatelný panel (stejný princip jako nápověda)
+//   Tabulka se při otevření filtru neposouvá
+//   Nápověda doplněna: sekce 🔍 Rozšířený filtr
 // ============================================================
 // ============================================================
 // SUPABASE CONFIG
@@ -1774,6 +1776,15 @@ export default function App() {
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
   };
+  const [advFilterPos, setAdvFilterPos] = useState({ x: Math.max(20, window.innerWidth/2 - 220), y: 120 });
+  const onAdvFilterDragStart = (e) => {
+    e.preventDefault();
+    const startX = e.clientX - advFilterPos.x, startY = e.clientY - advFilterPos.y;
+    const onMove = (ev) => setAdvFilterPos({ x: Math.max(0, Math.min(window.innerWidth-100, ev.clientX-startX)), y: Math.max(0, Math.min(window.innerHeight-60, ev.clientY-startY)) });
+    const onUp = () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   // ── Graf ──────────────────────────────────────────────────
   const [showGraf, setShowGraf] = useState(false);
@@ -2649,14 +2660,7 @@ export default function App() {
         <NativeSelect value={filterObjed} onChange={setFilterObjed} options={["Všichni objednatelé", ...objednatele]} isDark={isDark} style={{ width: 190 }} />
         <NativeSelect value={filterSV} onChange={setFilterSV} options={["Všichni stavbyvedoucí", ...stavbyvedouci]} isDark={isDark} style={{ width: 170 }} />
         <button onClick={() => setShowAdvFilter(v => !v)} onMouseEnter={e => showTooltip(e, "Rozšířený filtr: rok, částka, prošlé termíny")} onMouseLeave={hideTooltip} style={{ padding: "7px 12px", background: showAdvFilter ? "rgba(37,99,235,0.25)" : (isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)"), border: `1px solid ${showAdvFilter ? "rgba(37,99,235,0.5)" : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.15)")}`, borderRadius: 7, color: showAdvFilter ? "#60a5fa" : T.text, cursor: "pointer", fontSize: 12, fontWeight: showAdvFilter ? 700 : 400 }}>🔍 Filtr {showAdvFilter ? "▲" : "▼"}</button>
-        {showAdvFilter && <div style={{ width: "100%", display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", paddingTop: 8, borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`, marginTop: 4 }}>
-          <span style={{ color: T.textMuted, fontSize: 11, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase" }}>Rozšířený filtr:</span>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ color: T.textMuted, fontSize: 12 }}>Rok:</span><input value={filterRok} onChange={e => setFilterRok(e.target.value)} placeholder="např. 2025" style={{ ...inputSx, width: 90, background: T.inputBg, border: `1px solid ${T.inputBorder}`, color: T.text, padding: "5px 9px" }} /></div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ color: T.textMuted, fontSize: 12 }}>Nab. cena od:</span><input value={filterCastkaOd} onChange={e => setFilterCastkaOd(e.target.value)} placeholder="0" type="number" style={{ ...inputSx, width: 110, background: T.inputBg, border: `1px solid ${T.inputBorder}`, color: T.text, padding: "5px 9px" }} /></div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ color: T.textMuted, fontSize: 12 }}>do:</span><input value={filterCastkaDo} onChange={e => setFilterCastkaDo(e.target.value)} placeholder="∞" type="number" style={{ ...inputSx, width: 110, background: T.inputBg, border: `1px solid ${T.inputBorder}`, color: T.text, padding: "5px 9px" }} /></div>
-          <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", color: T.text, fontSize: 13 }}><input type="checkbox" checked={filterProslé} onChange={e => setFilterProslé(e.target.checked)} style={{ width: 15, height: 15, cursor: "pointer", accentColor: "#ef4444" }} /><span>⚠️ Jen prošlé termíny bez faktury</span></label>
-          {(filterRok || filterCastkaOd || filterCastkaDo || filterProslé) && <button onClick={() => { setFilterRok(""); setFilterCastkaOd(""); setFilterCastkaDo(""); setFilterProslé(false); }} style={{ padding: "5px 12px", background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 7, color: "#f87171", cursor: "pointer", fontSize: 12 }}>✕ Vymazat</button>}
-        </div>}
+
         <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
           <span style={{ background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)", border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.15)"}`, borderRadius: 7, padding: "4px 12px", color: T.text, fontSize: 13, fontWeight: 600 }}>{filtered.length} záznamů</span>
           <button onClick={() => setShowGraf(true)} onMouseEnter={e => showTooltip(e, "Sloupcový graf nákladů")} onMouseLeave={hideTooltip} style={{ padding: "7px 14px", background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.15)"}`, borderRadius: 7, color: T.text, cursor: "pointer", fontSize: 12 }}>📊 Graf</button>
@@ -2889,6 +2893,7 @@ export default function App() {
                 { icon: "🧾", title: "Označení faktur", text: <span>Ve sloupci Č. faktury se zobrazují dvě faktury. Faktura 1 je označena <span style={{fontWeight:900,color:"#ef4444"}}>e</span> — E.ON. Faktura 2 je označena <span style={{fontWeight:900,color:"#facc15"}}>S</span> — sdružení.</span> },
                 { icon: "⚠️", title: "Termíny ukončení", text: "Pole Ukončení se zobrazí červeně s ikonou ⚠️ pokud je termín v minulosti a stavba nemá fakturu. Tlačítko ⏰ Termíny v hlavičce zobrazí přehled staveb s termínem do 30 dní — včetně počtu zbývajících pracovních dní." },
                 { icon: "🔍", title: "Filtry a vyhledávání", text: "Vyhledávejte podle názvu nebo čísla stavby (pole Hledat). Filtrujte podle firmy, objednatele nebo stavbyvedoucího. Filtry lze kombinovat. Graf 📊 a export vždy pracují jen s aktuálně vyfiltrovanými daty." },
+                { icon: "🔍", title: "Rozšířený filtr", text: "Tlačítko 🔍 Filtr v liště otevře plovoucí panel s rozšířenými filtry: rok (hledá v termínu ukončení a datu SOD), rozsah nabídkové ceny od/do, a přepínač pro zobrazení pouze staveb s prošlým termínem bez faktury. Panel lze přetahovat myší. Tlačítko ✕ Vymazat resetuje jen rozšířené filtry." },
                 { icon: "📊", title: "Graf nákladů", text: "Tlačítko 📊 Graf ve filtrovací liště otevře interaktivní sloupcový graf. Tři přepínače: 🏢 Firma, 📅 Měsíc, 📂 Kat. I / II (Plán.+SNK+Běžné op. vs. Plán.+Běžné op.+Poruchy). Graf vždy odráží aktuální filtr." },
                 { icon: "📤", title: "Export dat", text: "CSV — prostá tabulka. Excel (.xlsx) — standardní formát. Barevný Excel (.xls) — se zbarvením firem (potvrďte varování Excelu). PDF — tisk na A4 landscape. Vše pracuje s aktuálním filtrem." },
                 { icon: "💾", title: "Záloha DB", text: "Tlačítko Záloha DB (pouze superadmin) stáhne kompletní zálohu celé databáze jako Excel se třemi listy: Stavby, Ciselniky, Uzivatele. Doporučujeme zálohovat pravidelně, zvláště před hromadnými změnami nebo aktualizací aplikace." },
@@ -3282,6 +3287,41 @@ export default function App() {
                 : <button onClick={() => handleDelete(deleteConfirm.id)} style={{ padding: "9px 18px", background: "linear-gradient(135deg,#dc2626,#b91c1c)", border: "none", borderRadius: 8, color: "#fff", cursor: "pointer", fontWeight: 600 }}>Potvrdit smazání</button>
               }
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ROZŠÍŘENÝ FILTR — plovoucí overlay */}
+      {showAdvFilter && (
+        <div style={{ position: "fixed", left: advFilterPos.x, top: advFilterPos.y, zIndex: 500, background: isDark ? "#1e293b" : "#fff", border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.15)"}`, borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.35)", width: 340, fontFamily: "'Segoe UI',sans-serif" }}>
+          {/* Drag handle */}
+          <div onMouseDown={onAdvFilterDragStart} style={{ padding: "10px 16px", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "grab", userSelect: "none", borderRadius: "12px 12px 0 0", background: isDark ? "rgba(37,99,235,0.15)" : "rgba(37,99,235,0.08)" }}>
+            <span style={{ color: isDark ? "#60a5fa" : "#2563eb", fontWeight: 700, fontSize: 13 }}>🔍 Rozšířený filtr</span>
+            <button onClick={() => setShowAdvFilter(false)} style={{ background: "none", border: "none", color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)", fontSize: 16, cursor: "pointer", lineHeight: 1, padding: 0 }}>✕</button>
+          </div>
+          {/* Obsah */}
+          <div style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)", fontSize: 12, width: 100, flexShrink: 0 }}>Rok:</span>
+              <input value={filterRok} onChange={e => setFilterRok(e.target.value)} placeholder="např. 2025" style={{ ...inputSx, flex: 1, background: isDark ? "#0f172a" : "#f8fafc", border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)"}`, color: isDark ? "#fff" : "#1e293b", padding: "7px 10px" }} />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)", fontSize: 12, width: 100, flexShrink: 0 }}>Nab. cena od:</span>
+              <input value={filterCastkaOd} onChange={e => setFilterCastkaOd(e.target.value)} placeholder="0" type="number" style={{ ...inputSx, flex: 1, background: isDark ? "#0f172a" : "#f8fafc", border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)"}`, color: isDark ? "#fff" : "#1e293b", padding: "7px 10px" }} />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)", fontSize: 12, width: 100, flexShrink: 0 }}>Nab. cena do:</span>
+              <input value={filterCastkaDo} onChange={e => setFilterCastkaDo(e.target.value)} placeholder="∞" type="number" style={{ ...inputSx, flex: 1, background: isDark ? "#0f172a" : "#f8fafc", border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)"}`, color: isDark ? "#fff" : "#1e293b", padding: "7px 10px" }} />
+            </div>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+              <input type="checkbox" checked={filterProslé} onChange={e => setFilterProslé(e.target.checked)} style={{ width: 15, height: 15, cursor: "pointer", accentColor: "#ef4444", flexShrink: 0 }} />
+              <span style={{ color: isDark ? "#e2e8f0" : "#1e293b", fontSize: 13 }}>⚠️ Jen prošlé termíny bez faktury</span>
+            </label>
+            {(filterRok || filterCastkaOd || filterCastkaDo || filterProslé) && (
+              <div style={{ paddingTop: 8, borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}` }}>
+                <button onClick={() => { setFilterRok(""); setFilterCastkaOd(""); setFilterCastkaDo(""); setFilterProslé(false); }} style={{ padding: "6px 14px", background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 7, color: "#f87171", cursor: "pointer", fontSize: 12, width: "100%" }}>✕ Vymazat rozšířené filtry</button>
+              </div>
+            )}
           </div>
         </div>
       )}
