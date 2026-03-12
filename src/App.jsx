@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-// BUILD: 2026_03_12_build0052
+// BUILD: 2026_03_12_build0053
 // ============================================================
 // POZNÁMKY PRO CLAUDE (čti na začátku každé session)
 // ============================================================
@@ -65,7 +65,7 @@ import * as XLSX from "xlsx";
 // PENDING FUNKCE (dohodnuté, zatím neimplementované)
 // ============================================================
 // [PENDING] 📋 Kopírovat stavbu — duplikovat řádek jako základ pro nový
-// [PENDING] 📱 Mobilní kartičky — přepínač tabulka ↔ kartičky
+// [PENDING] 📱 Mobilní kartičky — přepínač tabulka ↔ kartičky (přidáno v BUILD0053 jako Scroll pohled)
 //
 // PRAVIDLA EXPORTU (platí od BUILD0052)
 // ============================================================
@@ -124,6 +124,14 @@ import * as XLSX from "xlsx";
 //   useMemo + iterativní simulace stránkování, ratchet DOM měření — vše nestabilní
 //   Problém: různé výšky řádků na různých stránkách nelze spolehlivě předpovědět z DOM
 // BUILD0052 — FIX definitivní: PAGE_SIZE = fixní useState(7), žádné DOM měření
+//   Přidána tlačítka − / + v paginaci pro ruční nastavení počtu řádků (3–50)
+// BUILD0053 — Dva pohledy + oprava filtru Kat. II + barevné grafy
+//   📋 Stránky / 📜 Vše — přepínač v filtrovací liště
+//   Pohled Vše: zobrazí všechny filtered řádky, skryje paginaci
+//   FIX: filterKat "II" nezahrnoval poruch → opraveno
+//   Graf Kat. I/II: stacked bars — 3 složky KAT I (fialová/modrá/zelená)
+//     + 3 složky KAT II (oranžová/červená/fialová)
+//   Tabulka v grafu: rozpad na 6 složek s barvami + součty Kat. I, Kat. II, Celkem
 //   Přidána tlačítka − / + v paginaci pro ruční nastavení počtu řádků (3–50)
 //   Zobrazení "7 řád." vedle tlačítek — uživatel vidí aktuální hodnotu
 //   Každý monitor si nastaví sám dle potřeby
@@ -716,14 +724,20 @@ function GrafModal({ data, firmy, isDark, onClose }) {
       });
       return Object.values(map).sort((a, b) => a._sort.localeCompare(b._sort));
     } else {
-      // mode === "kat" — dvě skupiny, každá firma jako podskupina
+      // mode === "kat" — každá firma, rozpad na jednotlivé složky
       const firmaKeys = [...new Set(data.map(r => r.firma || "Bez firmy"))];
       return firmaKeys.map(firma => {
         const rows = data.filter(r => (r.firma || "Bez firmy") === firma);
         return {
           name: firma,
-          kat1: rows.reduce((s, r) => s + katI(r), 0),
-          kat2: rows.reduce((s, r) => s + katII(r), 0),
+          ps_i:  rows.reduce((s,r) => s+(Number(r.ps_i)||0),  0),
+          snk_i: rows.reduce((s,r) => s+(Number(r.snk_i)||0), 0),
+          bo_i:  rows.reduce((s,r) => s+(Number(r.bo_i)||0),  0),
+          ps_ii: rows.reduce((s,r) => s+(Number(r.ps_ii)||0), 0),
+          bo_ii: rows.reduce((s,r) => s+(Number(r.bo_ii)||0), 0),
+          poruch:rows.reduce((s,r) => s+(Number(r.poruch)||0),0),
+          kat1:  rows.reduce((s,r) => s+katI(r),  0),
+          kat2:  rows.reduce((s,r) => s+katII(r), 0),
         };
       });
     }
@@ -738,23 +752,40 @@ function GrafModal({ data, firmy, isDark, onClose }) {
   const gridC   = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
 
   const renderBars = () => {
-    const isKat   = mode === "kat";
-    const KEYS    = isKat ? ["kat1","kat2"] : ["nabidka","vyfakturovano","zrealizovano"];
-    const LABELS  = isKat ? ["Kat. I (Plán.+SNK+Běžné op.)","Kat. II (Plán.+Běžné op.+Poruchy)"] : ["Nabídka","Vyfakturováno","Zrealizováno"];
-    const COLORS  = isKat ? ["#60a5fa","#f97316"] : ["#60a5fa","#4ade80","#fbbf24"];
+    const isKat  = mode === "kat";
+    // Kat mode: 2 skupiny sloupků (I a II), každá stacked ze složek
+    // Složky Kat. I: ps_i=#818cf8, snk_i=#38bdf8, bo_i=#4ade80
+    // Složky Kat. II: ps_ii=#fb923c, bo_ii=#f87171, poruch=#e879f9
+    const KAT_I_KEYS   = ["ps_i","snk_i","bo_i"];
+    const KAT_II_KEYS  = ["ps_ii","bo_ii","poruch"];
+    const KAT_I_COLORS = ["#818cf8","#38bdf8","#4ade80"];
+    const KAT_II_COLORS= ["#fb923c","#f87171","#e879f9"];
+    const KAT_I_LABELS = ["Plán. I","SNK","Běžné op. I"];
+    const KAT_II_LABELS= ["Plán. II","Běžné op. II","Poruchy"];
 
-    const maxVal = Math.max(...grafData.map(d => Math.max(...KEYS.map(k => d[k] || 0))), 1);
-    const W = 700, H = 310, PAD_L = 68, PAD_B = 70, PAD_T = 20, PAD_R = 20;
+    const KEYS    = isKat ? ["kat1","kat2"] : ["nabidka","vyfakturovano","zrealizovano"];
+    const LABELS  = isKat ? ["Kat. I","Kat. II"] : ["Nabídka","Vyfakturováno","Zrealizováno"];
+    const COLORS  = isKat ? ["#818cf8","#fb923c"] : ["#60a5fa","#4ade80","#fbbf24"];
+
+    const maxVal = Math.max(...grafData.map(d => isKat
+      ? Math.max(
+          KAT_I_KEYS.reduce((s,k)=>s+(d[k]||0),0),
+          KAT_II_KEYS.reduce((s,k)=>s+(d[k]||0),0)
+        )
+      : Math.max(...KEYS.map(k => d[k] || 0))
+    ), 1);
+
+    const W = 700, H = 340, PAD_L = 68, PAD_B = 100, PAD_T = 20, PAD_R = 20;
     const chartW = W - PAD_L - PAD_R;
     const chartH = H - PAD_T - PAD_B;
     const groupW = chartW / Math.max(grafData.length, 1);
-    const numBars = KEYS.length;
-    const barW = Math.min(Math.max(8, groupW / (numBars + 1) - 2), 30);
+    const numBars = isKat ? 2 : KEYS.length;
+    const barW = Math.min(Math.max(10, groupW / (numBars + 1) - 2), 36);
     const scaleY = v => PAD_T + chartH - (v / maxVal) * chartH;
-    const offsets = KEYS.map((_, ki) => (ki - (numBars - 1) / 2) * (barW + 3));
+    const offsets = Array.from({length: numBars}, (_,ki) => (ki - (numBars-1)/2) * (barW + 4));
 
     return (
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 310 }}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 340 }}>
         {/* grid */}
         {[0, 0.25, 0.5, 0.75, 1].map(p => {
           const y = PAD_T + p * chartH;
@@ -763,21 +794,34 @@ function GrafModal({ data, firmy, isDark, onClose }) {
             <text x={PAD_L - 6} y={y + 4} textAnchor="end" fill={mutedC} fontSize={9}>{fmtTick(maxVal * (1 - p))}</text>
           </g>;
         })}
-        {/* baseline */}
         <line x1={PAD_L} x2={W - PAD_R} y1={PAD_T + chartH} y2={PAD_T + chartH} stroke={isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)"} strokeWidth={1}/>
         {/* bars */}
         {grafData.map((d, gi) => {
           const cx = PAD_L + gi * groupW + groupW / 2;
+          if (isKat) {
+            // Stacked bars pro KAT I a KAT II
+            return [
+              { keys: KAT_I_KEYS,  colors: KAT_I_COLORS,  off: offsets[0] },
+              { keys: KAT_II_KEYS, colors: KAT_II_COLORS, off: offsets[1] },
+            ].map(({ keys, colors, off }, gi2) => {
+              let stackY = PAD_T + chartH;
+              return keys.map((k, ki) => {
+                const val = d[k] || 0;
+                if (val <= 0) return null;
+                const bh = Math.max(2, (val / maxVal) * chartH);
+                stackY -= bh;
+                return <rect key={k} x={cx + off - barW/2} y={stackY} width={barW} height={bh} fill={colors[ki]} rx={ki === keys.length-1 ? 3 : 0} opacity={0.9}/>;
+              });
+            });
+          }
+          // Normal grouped bars
           return KEYS.map((k, ki) => {
-            const val  = d[k] || 0;
-            const bh   = Math.max(1, (val / maxVal) * chartH);
-            const by   = scaleY(val);
-            const bx   = cx + offsets[ki];
-            // Kat mode: zbarvit sloupeček barvou firmy pro kat1, tmavší pro kat2
-            const fill = isKat
-              ? (ki === 0 ? (firmaColorMap[d.name] || COLORS[0]) : (firmaColorMap[d.name] ? firmaColorMap[d.name] + "99" : COLORS[1]))
-              : (mode === "firma" && ki === 0 ? (firmaColorMap[d.name] || COLORS[0]) : COLORS[ki]);
-            return <rect key={k} x={bx - barW / 2} y={by} width={barW} height={bh} fill={fill} rx={3} opacity={0.88}/>;
+            const val = d[k] || 0;
+            const bh  = Math.max(1, (val / maxVal) * chartH);
+            const by  = scaleY(val);
+            const bx  = cx + offsets[ki];
+            const fill = mode === "firma" && ki === 0 ? (firmaColorMap[d.name] || COLORS[0]) : COLORS[ki];
+            return <rect key={k} x={bx - barW/2} y={by} width={barW} height={bh} fill={fill} rx={3} opacity={0.88}/>;
           });
         })}
         {/* x labels */}
@@ -787,12 +831,34 @@ function GrafModal({ data, firmy, isDark, onClose }) {
           return <text key={gi} x={cx} y={H - PAD_B + 16} textAnchor="end" fill={mutedC} fontSize={9} transform={`rotate(-28, ${cx}, ${H - PAD_B + 16})`}>{lbl}</text>;
         })}
         {/* legend */}
-        {LABELS.map((l, i) => (
-          <g key={l} transform={`translate(${PAD_L + i * (isKat ? 220 : 140)}, ${H - 10})`}>
-            <rect width={10} height={10} fill={COLORS[i]} rx={2}/>
-            <text x={14} y={9} fill={mutedC} fontSize={10}>{l}</text>
+        {isKat ? (
+          <g>
+            {/* KAT I legend */}
+            {KAT_I_LABELS.map((l,i) => (
+              <g key={l} transform={`translate(${PAD_L + i * 110}, ${H - PAD_B + 30})`}>
+                <rect width={10} height={10} fill={KAT_I_COLORS[i]} rx={2}/>
+                <text x={13} y={9} fill={mutedC} fontSize={9}>{l}</text>
+              </g>
+            ))}
+            {/* KAT II legend */}
+            {KAT_II_LABELS.map((l,i) => (
+              <g key={l} transform={`translate(${PAD_L + i * 110}, ${H - PAD_B + 46})`}>
+                <rect width={10} height={10} fill={KAT_II_COLORS[i]} rx={2}/>
+                <text x={13} y={9} fill={mutedC} fontSize={9}>{l}</text>
+              </g>
+            ))}
+            {/* Separator labels */}
+            <text x={PAD_L} y={H - PAD_B + 24} fill={isDark ? "#818cf8" : "#4f46e5"} fontSize={9} fontWeight={700}>── KAT. I ──</text>
+            <text x={PAD_L + 340} y={H - PAD_B + 24} fill={isDark ? "#fb923c" : "#ea580c"} fontSize={9} fontWeight={700}>── KAT. II ──</text>
           </g>
-        ))}
+        ) : (
+          LABELS.map((l, i) => (
+            <g key={l} transform={`translate(${PAD_L + i * 140}, ${H - 10})`}>
+              <rect width={10} height={10} fill={COLORS[i]} rx={2}/>
+              <text x={14} y={9} fill={mutedC} fontSize={10}>{l}</text>
+            </g>
+          ))
+        )}
       </svg>
     );
   };
@@ -800,33 +866,50 @@ function GrafModal({ data, firmy, isDark, onClose }) {
   // Souhrn pro kat mode — speciální struktura
   const renderTable = () => {
     if (mode === "kat") {
+      const cols = [
+        { key: "ps_i",   label: "Plán. I",     color: "#818cf8" },
+        { key: "snk_i",  label: "SNK",          color: "#38bdf8" },
+        { key: "bo_i",   label: "Běžné op. I",  color: "#4ade80" },
+        { key: "ps_ii",  label: "Plán. II",     color: "#fb923c" },
+        { key: "bo_ii",  label: "Běžné op. II", color: "#f87171" },
+        { key: "poruch", label: "Poruchy",       color: "#e879f9" },
+      ];
       return (
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
           <thead>
             <tr style={{ background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)" }}>
-              {["Firma","Kat. I","Kat. II","Celkem"].map((h, i) => (
-                <th key={h} style={{ padding: "7px 12px", textAlign: i === 0 ? "left" : "right", color: mutedC, fontWeight: 700, fontSize: 11, borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}` }}>{h}</th>
+              <th style={{ padding: "7px 10px", textAlign: "left", color: mutedC, fontWeight: 700, fontSize: 10, borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}` }}>Firma</th>
+              {cols.map(c => (
+                <th key={c.key} style={{ padding: "7px 8px", textAlign: "right", color: c.color, fontWeight: 700, fontSize: 10, borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`, whiteSpace: "nowrap" }}>{c.label}</th>
               ))}
+              <th style={{ padding: "7px 10px", textAlign: "right", color: "#818cf8", fontWeight: 700, fontSize: 10, borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}` }}>Kat. I</th>
+              <th style={{ padding: "7px 10px", textAlign: "right", color: "#fb923c", fontWeight: 700, fontSize: 10, borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}` }}>Kat. II</th>
+              <th style={{ padding: "7px 10px", textAlign: "right", color: isDark ? "#93c5fd" : "#2563eb", fontWeight: 700, fontSize: 10, borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}` }}>Celkem</th>
             </tr>
           </thead>
           <tbody>
             {grafData.map((d, i) => (
               <tr key={i} style={{ borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}` }}>
-                <td style={{ padding: "6px 12px", color: textC, fontWeight: 600 }}>
-                  <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: firmaColorMap[d.name] || "#3b82f6", marginRight: 7, verticalAlign: "middle" }}/>
+                <td style={{ padding: "5px 10px", color: textC, fontWeight: 600, whiteSpace: "nowrap" }}>
+                  <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: firmaColorMap[d.name] || "#3b82f6", marginRight: 6, verticalAlign: "middle" }}/>
                   {d.name}
                 </td>
-                <td style={{ padding: "6px 12px", textAlign: "right", color: "#60a5fa", fontFamily: "monospace", fontSize: 12 }}>{fmtVal(d.kat1)}</td>
-                <td style={{ padding: "6px 12px", textAlign: "right", color: "#f97316", fontFamily: "monospace", fontSize: 12 }}>{fmtVal(d.kat2)}</td>
-                <td style={{ padding: "6px 12px", textAlign: "right", color: isDark ? "#93c5fd" : "#2563eb", fontFamily: "monospace", fontSize: 12, fontWeight: 700 }}>{fmtVal((d.kat1||0)+(d.kat2||0))}</td>
+                {cols.map(c => (
+                  <td key={c.key} style={{ padding: "5px 8px", textAlign: "right", color: d[c.key] > 0 ? c.color : mutedC, fontFamily: "monospace", fontSize: 11 }}>{d[c.key] > 0 ? fmtVal(d[c.key]) : "—"}</td>
+                ))}
+                <td style={{ padding: "5px 10px", textAlign: "right", color: "#818cf8", fontFamily: "monospace", fontSize: 11, fontWeight: 700 }}>{fmtVal(d.kat1)}</td>
+                <td style={{ padding: "5px 10px", textAlign: "right", color: "#fb923c", fontFamily: "monospace", fontSize: 11, fontWeight: 700 }}>{fmtVal(d.kat2)}</td>
+                <td style={{ padding: "5px 10px", textAlign: "right", color: isDark ? "#93c5fd" : "#2563eb", fontFamily: "monospace", fontSize: 11, fontWeight: 700 }}>{fmtVal((d.kat1||0)+(d.kat2||0))}</td>
               </tr>
             ))}
-            {/* Celkový součet */}
-            <tr style={{ background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.06)", fontWeight: 700 }}>
-              <td style={{ padding: "7px 12px", color: textC, fontWeight: 700 }}>CELKEM</td>
-              <td style={{ padding: "7px 12px", textAlign: "right", color: "#60a5fa", fontFamily: "monospace", fontWeight: 700 }}>{fmtVal(grafData.reduce((s,d)=>s+(d.kat1||0),0))}</td>
-              <td style={{ padding: "7px 12px", textAlign: "right", color: "#f97316", fontFamily: "monospace", fontWeight: 700 }}>{fmtVal(grafData.reduce((s,d)=>s+(d.kat2||0),0))}</td>
-              <td style={{ padding: "7px 12px", textAlign: "right", color: isDark ? "#93c5fd" : "#2563eb", fontFamily: "monospace", fontWeight: 700 }}>{fmtVal(grafData.reduce((s,d)=>s+(d.kat1||0)+(d.kat2||0),0))}</td>
+            <tr style={{ background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)" }}>
+              <td style={{ padding: "6px 10px", color: textC, fontWeight: 700, fontSize: 11 }}>CELKEM</td>
+              {cols.map(c => (
+                <td key={c.key} style={{ padding: "6px 8px", textAlign: "right", color: c.color, fontFamily: "monospace", fontSize: 11, fontWeight: 700 }}>{fmtVal(grafData.reduce((s,d)=>s+(d[c.key]||0),0))}</td>
+              ))}
+              <td style={{ padding: "6px 10px", textAlign: "right", color: "#818cf8", fontFamily: "monospace", fontWeight: 700 }}>{fmtVal(grafData.reduce((s,d)=>s+(d.kat1||0),0))}</td>
+              <td style={{ padding: "6px 10px", textAlign: "right", color: "#fb923c", fontFamily: "monospace", fontWeight: 700 }}>{fmtVal(grafData.reduce((s,d)=>s+(d.kat2||0),0))}</td>
+              <td style={{ padding: "6px 10px", textAlign: "right", color: isDark ? "#93c5fd" : "#2563eb", fontFamily: "monospace", fontWeight: 700 }}>{fmtVal(grafData.reduce((s,d)=>s+(d.kat1||0)+(d.kat2||0),0))}</td>
             </tr>
           </tbody>
         </table>
@@ -2290,7 +2373,7 @@ export default function App() {
     if (filterProslé) { const dnes = new Date(); dnes.setHours(0,0,0,0); const isFak = r.cislo_faktury && r.cislo_faktury.trim() !== "" && r.castka_bez_dph && Number(r.castka_bez_dph) !== 0 && r.splatna && r.splatna.trim() !== ""; if (isFak || !r.ukonceni) return false; const [d,m,y] = r.ukonceni.split(".").map(Number); if (new Date(y,m-1,d) >= dnes) return false; }
     if (filterFakturace) { const isFak = r.cislo_faktury && r.cislo_faktury.trim() !== "" && r.castka_bez_dph && Number(r.castka_bez_dph) !== 0 && r.splatna && r.splatna.trim() !== ""; if (filterFakturace === "ano" && !isFak) return false; if (filterFakturace === "ne" && isFak) return false; }
     if (filterKat === "I" && !((Number(r.ps_i)||0)+(Number(r.snk_i)||0)+(Number(r.bo_i)||0) > 0)) return false;
-    if (filterKat === "II" && !((Number(r.ps_ii)||0)+(Number(r.bo_ii)||0) > 0)) return false;
+    if (filterKat === "II" && !((Number(r.ps_ii)||0)+(Number(r.bo_ii)||0)+(Number(r.poruch)||0) > 0)) return false;
     return true;
   }), [data, filterFirma, filterText, filterObjed, filterSV, filterRok, filterCastkaOd, filterCastkaDo, filterProslé, filterFakturace, filterKat]);
 
@@ -2305,10 +2388,12 @@ export default function App() {
 
   // PAGE_SIZE: fixní hodnota, uživatel může měnit tlačítky v paginaci
   const [PAGE_SIZE, setPageSize] = useState(7);
+  const [viewMode, setViewMode] = useState("page"); // "page" | "scroll"
   const [page, setPage] = useState(0);
   useEffect(() => { setPage(0); }, [filterFirma, filterText, filterObjed, filterSV, filterRok, filterCastkaOd, filterCastkaDo, filterProslé, filterFakturace, filterKat]);
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const displayRows = viewMode === "scroll" ? filtered : paginated;
 
 
 
@@ -2637,6 +2722,11 @@ export default function App() {
         <NativeSelect value={filterObjed} onChange={setFilterObjed} options={["Všichni objednatelé", ...objednatele]} isDark={isDark} style={{ width: 160, flexShrink: 0 }} />
         <NativeSelect value={filterSV} onChange={setFilterSV} options={["Všichni stavbyvedoucí", ...stavbyvedouci]} isDark={isDark} style={{ width: 170, flexShrink: 0 }} />
         <button onClick={() => setShowAdvFilter(v => !v)} onMouseEnter={e => showTooltip(e, "Rozšířený filtr: rok, částka, prošlé termíny")} onMouseLeave={hideTooltip} style={{ padding: "6px 10px", background: showAdvFilter ? "rgba(37,99,235,0.25)" : (isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)"), border: `1px solid ${showAdvFilter ? "rgba(37,99,235,0.5)" : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.15)")}`, borderRadius: 7, color: showAdvFilter ? "#60a5fa" : T.text, cursor: "pointer", fontSize: 12, fontWeight: showAdvFilter ? 700 : 400, whiteSpace: "nowrap", flexShrink: 0 }}>Filtr {showAdvFilter ? "▲" : "▼"}</button>
+        <div style={{ display: "flex", gap: 2, flexShrink: 0, background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)", borderRadius: 7, padding: 2, border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.12)"}` }}>
+          {[["page","📋 Stránky"],["scroll","📜 Vše"]].map(([vm, lbl]) => (
+            <button key={vm} onClick={() => setViewMode(vm)} style={{ padding: "4px 10px", background: viewMode === vm ? (isDark ? "rgba(37,99,235,0.4)" : "#2563eb") : "transparent", border: "none", borderRadius: 5, color: viewMode === vm ? "#fff" : T.textMuted, cursor: "pointer", fontSize: 11, fontWeight: viewMode === vm ? 700 : 400, whiteSpace: "nowrap" }}>{lbl}</button>
+          ))}
+        </div>
         <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
           <span style={{ background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)", border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.15)"}`, borderRadius: 7, padding: "4px 10px", color: T.text, fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>{filtered.length} záz.</span>
           <button onClick={() => setShowGraf(true)} onMouseEnter={e => showTooltip(e, "Sloupcový graf nákladů")} onMouseLeave={hideTooltip} style={{ padding: "6px 10px", background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.15)"}`, borderRadius: 7, color: T.text, cursor: "pointer", fontSize: 12, whiteSpace: "nowrap" }}>📊 Graf</button>
@@ -2668,7 +2758,7 @@ export default function App() {
       </div>
 
       {/* TABLE */}
-      <div ref={tableWrapRef} className="table-wrapper" style={{ overflowX: "auto", overflowY: "auto", flex: 1, minHeight: 0 }}>
+      <div ref={tableWrapRef} className="table-wrapper" style={{ overflowX: "auto", overflowY: "auto", flex: 1, minHeight: 0, ...(viewMode === "scroll" ? { overflowY: "auto" } : {}) }}>
         <table style={{ borderCollapse: "collapse", fontSize: 12.5, tableLayout: "fixed", width: "max-content" }}>
           <colgroup>
             <col style={{ width: 40 }} />
@@ -2711,7 +2801,7 @@ export default function App() {
             </tr>
           </thead>
           <tbody>
-            {paginated.map((row, i) => {
+            {displayRows.map((row, i) => {
               const globalIndex = page * PAGE_SIZE + i;
               const isFaktura = row.cislo_faktury && row.cislo_faktury.trim() !== "" && row.castka_bez_dph && Number(row.castka_bez_dph) !== 0 && row.splatna && row.splatna.trim() !== "";
               const isFaktura2 = !!(row.cislo_faktury_2 || row.castka_bez_dph_2 || row.splatna_2);
@@ -2803,7 +2893,7 @@ export default function App() {
         </table>
       </div>
 
-      <div ref={paginationRef} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "6px 18px", borderTop: `1px solid ${T.cellBorder}`, background: T.filterBg, flexShrink: 0, minHeight: 44 }}>
+      <div ref={paginationRef} style={{ display: viewMode === "scroll" ? "none" : "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "6px 18px", borderTop: `1px solid ${T.cellBorder}`, background: T.filterBg, flexShrink: 0, minHeight: 44 }}>
         {totalPages > 1 && <>
           <button onClick={() => setPage(0)} disabled={page === 0} style={{ padding: "4px 9px", background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 6, color: T.textMuted, cursor: page === 0 ? "default" : "pointer", opacity: page === 0 ? 0.4 : 1, fontSize: 13 }}>«</button>
           <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} style={{ padding: "4px 9px", background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 6, color: T.textMuted, cursor: page === 0 ? "default" : "pointer", opacity: page === 0 ? 0.4 : 1, fontSize: 13 }}>‹</button>
