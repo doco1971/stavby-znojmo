@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
 // BUILD: 2026_03_12_build0048
-// ============================================================
+// ============================================================ 
 // POZNÁMKY PRO CLAUDE (čti na začátku každé session)
 // ============================================================
 // PRAVIDLO: Každá změna = dva soubory:
