@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-// BUILD: 2026_03_12_build0060
+// BUILD: 2026_03_12_build0061
 // ============================================================
 // POZNÁMKY PRO CLAUDE (čti na začátku každé session)
 // ============================================================
@@ -139,6 +139,10 @@ import * as XLSX from "xlsx";
 //   labels rotate odstraněn, NativeSelect minWidth 220px
 // BUILD0059 — FIX: resize sloupce — truncate maxWidth: col.width → getColWidth
 // BUILD0060 — FIX: resize sloupce nepustí za header text
+//   th: minWidth:0 + maxWidth:getColWidth, input max 2000px
+// BUILD0061 — Doplnění nápovědy o nové funkce (BUILD0043–0060)
+//   Přidáno: Dva pohledy, Rozšířený filtr, Import staveb, Označení faktur e/S
+//   Upraveno: Šířky sloupců (max 2000px, zadání číslem)
 //   th: minWidth:0 + maxWidth:getColWidth → fixed layout respektuje col šířku
 //   input pro šířku: max 2000px, šířka 65px
 //   maxWidth: col.width-22 → getColWidth(col)-22
@@ -3016,7 +3020,11 @@ export default function App() {
                 { icon: "🔔", title: "Notifikace v prohlížeči", text: "Aplikace zobrazuje upozornění na blížící se termíny i mimo otevřenou záložku. Po přihlášení prohlížeč zobrazí dialog — klikněte Povolit. Notifikace se odešlou pro stavby s termínem do 7 pracovních dní, opakují každých 60 min pokud záložka není aktivní." },
                 { icon: "⏱️", title: "Automatické odhlášení", text: "Aplikace se automaticky odhlásí po 15 minutách nečinnosti. Před odhlášením se zobrazí varování s odpočítáváním 60 sekund — klikněte Jsem tady pro pokračování. Neaktivní v demo režimu." },
                 { icon: "🌙", title: "Tmavý / světlý režim", text: "Přepínejte mezi 🌞 světlým a 🌙 tmavým režimem tlačítky v pravém horním rohu. Preference se uloží v prohlížeči." },
-                { icon: "↔️", title: "Šířky sloupců", text: "Táhněte ikonu ⟺ v záhlaví sloupce pro změnu šířky. Nastavení se uloží v prohlížeči. Superadmin může resetovat šířky na výchozí v Nastavení → Aplikace." },
+                { icon: "↔️", title: "Šířky sloupců", text: "Táhněte ikonu ⟺ v záhlaví sloupce pro změnu šířky (max 2000px). Kliknutím na ⟺ zadáte šířku číslem. Nastavení se uloží v databázi. Superadmin může resetovat šířky na výchozí v Nastavení → Aplikace." },
+                { icon: "📋", title: "Dva pohledy — Stránky / Vše", text: "Přepínač 📋 Stránky / 📜 Vše v liště přepíná mezi stránkovaným zobrazením (tlačítka −/+ pro počet řádků na stránce) a plným výpisem všech záznamů s vertikálním scrollem." },
+                { icon: "🔍", title: "Rozšířený filtr", text: "Tlačítko Filtr ▾ otevře plovoucí panel s rozšířenými možnostmi: rok uvedení do provozu, rozsah nabídkové ceny (od/do), prošlé termíny bez faktury, stav fakturace a kategorie I / II. Panel lze přetáhnout myší kamkoliv na plochu." },
+                { icon: "📥", title: "Import staveb", text: "Tlačítko 📥 Import (pouze superadmin) načte stavby z Excelu — podporuje původní tabulkový formát i zálohu DB. Před importem systém zobrazí náhled a umožní potvrdit nebo zrušit. Existující záznamy se aktualizují, nové přidají." },
+                { icon: "🧾", title: "Označení faktur e / S", text: "Červené 'e' před číslem faktury označuje faktury E.ON (sdružená dodávka). Žluté 'S' před druhým číslem faktury označuje fakturu sdružení. Druhá faktura se zobrazuje jako druhý řádek v buňce (oddělený přerušovanou čarou)." },
               ].map(({ icon, title, text }) => (
                 <div key={title} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                   <div style={{ fontWeight: 700, marginBottom: 3, color: "#60a5fa" }}>{icon} {title}</div>
