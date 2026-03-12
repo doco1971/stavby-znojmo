@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-// BUILD: 2026_03_12_build0051
+// BUILD: 2026_03_12_build0052
 // ============================================================
 // POZNÁMKY PRO CLAUDE (čti na začátku každé session)
 // ============================================================
@@ -67,6 +67,12 @@ import * as XLSX from "xlsx";
 // [PENDING] 📋 Kopírovat stavbu — duplikovat řádek jako základ pro nový
 // [PENDING] 📱 Mobilní kartičky — přepínač tabulka ↔ kartičky
 //
+// PRAVIDLA EXPORTU (platí od BUILD0052)
+// ============================================================
+// Každý build se exportuje jako:
+//   1. stavby-app_DATUM_buildXXXX.jsx        — hlavní soubor aplikace
+//   2. stavby-app_DATUM_buildXXXX_changelog.txt — popis změn tohoto buildu
+// Hlavička .jsx obsahuje vždy aktuální HISTORY + PENDING sekci.
 // ============================================================
 // HISTORY BUILDŮ (0025–0045)
 // ============================================================
@@ -114,15 +120,13 @@ import * as XLSX from "xlsx";
 // BUILD0050 — FIX blikání stránkování: řádky s Fakturou 2 jsou vyšší
 //   PAGE_SIZE se počítal z firstRow → přepočet → blikání
 //   Oprava: MIN výška, pak MAX výška, nakonec stableRowH ref — vše nestabilní
-// BUILD0051 — FIX posuvník a přetékání: správný výpočet PAGE_SIZE
-//   PAGE_SIZE změněn z useState na useMemo s přístupem k filtered datům
-//   Iterativní simulace stránkování: pro každou stránku spočítá výšku dle
-//   ROW_H_NORMAL=33px / ROW_H_FAT=56px (řádek s Fakturou 2)
-//   Výsledek = minimum přes všechny stránky → žádné přetečení, žádný posuvník
-//   PAGE_SIZE se počítal z firstRow → na str.5+ vyšší řádky → přepočet → blikání
-//   Oprava: použít MIN výšku ze všech viditelných řádků (ne firstRow)
-//   Odstraněn druhý useEffect bez deps (spouštěl se po každém renderu = smyčka)
-//   setPageSize: přidána ochrana prev === rows (nevyvolá re-render pokud stejné)
+// BUILD0051 — FIX posuvník a přetékání: více pokusů o dynamický výpočet
+//   useMemo + iterativní simulace stránkování, ratchet DOM měření — vše nestabilní
+//   Problém: různé výšky řádků na různých stránkách nelze spolehlivě předpovědět z DOM
+// BUILD0052 — FIX definitivní: PAGE_SIZE = fixní useState(7), žádné DOM měření
+//   Přidána tlačítka − / + v paginaci pro ruční nastavení počtu řádků (3–50)
+//   Zobrazení "7 řád." vedle tlačítek — uživatel vidí aktuální hodnotu
+//   Každý monitor si nastaví sám dle potřeby
 // ============================================================
 // ============================================================
 // SUPABASE CONFIG
@@ -2299,60 +2303,9 @@ export default function App() {
   const paginationRef = useRef(null);
   const footerRef = useRef(null);
 
-  // Výšky řádků fixní z CSS paddingu:
-  //   normální řádek: padding 7+7=14 + text 18 + border 1 = 33px
-  //   s Fakturou 2:   +marginTop 2 + paddingTop 2 + border 1 + text 18 = +23px → 56px
-  const ROW_H_NORMAL = 33;
-  const ROW_H_FAT = 56;
-  const [availableH, setAvailableH] = useState(0);
-  useEffect(() => {
-    const calc = () => {
-      if (!tableWrapRef.current) return;
-      const wrap = tableWrapRef.current;
-      const thead = wrap.querySelector("thead");
-      const theadH = thead ? thead.getBoundingClientRect().height : 37;
-      const wrapH = wrap.clientHeight > 50 ? wrap.clientHeight : wrap.offsetHeight;
-      const avail = wrapH - theadH - 2;
-      setAvailableH(prev => prev === avail ? prev : avail);
-    };
-    const t1 = setTimeout(calc, 0);
-    const t2 = setTimeout(calc, 200);
-    const ro = new ResizeObserver(calc);
-    if (tableWrapRef.current) ro.observe(tableWrapRef.current);
-    window.addEventListener("resize", calc);
-    window.addEventListener("orientationchange", () => setTimeout(calc, 300));
-    return () => {
-      clearTimeout(t1); clearTimeout(t2);
-      ro.disconnect();
-      window.removeEventListener("resize", calc);
-      window.removeEventListener("orientationchange", calc);
-    };
-  }, []);
-  // PAGE_SIZE = kolik řádků se vejde na nejhustší stránku (má přístup k filtered)
-  const PAGE_SIZE = useMemo(() => {
-    if (availableH <= 0) return 10;
-    // Simuluj stránkování — najdi minimum přes všechny stránky
-    let minSize = 9999;
-    let idx = 0;
-    while (idx < filtered.length) {
-      let used = 0, count = 0;
-      for (let i = idx; i < filtered.length; i++) {
-        const r = filtered[i];
-        const fat = !!(r.cislo_faktury_2 || r.castka_bez_dph_2 || r.splatna_2);
-        const h = fat ? ROW_H_FAT : ROW_H_NORMAL;
-        if (used + h > availableH && count > 0) break;
-        used += h;
-        count++;
-      }
-      count = Math.max(5, count);
-      if (count < minSize) minSize = count;
-      idx += count;
-    }
-    return minSize === 9999 ? Math.max(5, Math.floor(availableH / ROW_H_NORMAL)) : minSize;
-  }, [availableH, filtered]);
-
-  const [page, setPage] = useState(0);
-  useEffect(() => { setPage(0); }, [filterFirma, filterText, filterObjed, filterSV, filterRok, filterCastkaOd, filterCastkaDo, filterProslé, filterFakturace, filterKat]);
+  // PAGE_SIZE: fixní hodnota, uživatel může měnit tlačítky v paginaci
+  const [PAGE_SIZE, setPageSize] = useState(7);
+    useEffect(() => { setPage(0); }, [filterFirma, filterText, filterObjed, filterSV, filterRok, filterCastkaOd, filterCastkaDo, filterProslé, filterFakturace, filterKat]);
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
@@ -2859,6 +2812,11 @@ export default function App() {
           <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1} style={{ padding: "4px 9px", background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 6, color: T.textMuted, cursor: page === totalPages - 1 ? "default" : "pointer", opacity: page === totalPages - 1 ? 0.4 : 1, fontSize: 13 }}>›</button>
           <button onClick={() => setPage(totalPages - 1)} disabled={page === totalPages - 1} style={{ padding: "4px 9px", background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 6, color: T.textMuted, cursor: page === totalPages - 1 ? "default" : "pointer", opacity: page === totalPages - 1 ? 0.4 : 1, fontSize: 13 }}>»</button>
           <span style={{ color: T.textMuted, fontSize: 12, marginLeft: 6 }}>{page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)} z {filtered.length}</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 3, marginLeft: 10, borderLeft: `1px solid ${T.cellBorder}`, paddingLeft: 10 }}>
+            <button onClick={() => setPageSize(s => Math.max(3, s - 1))} title="Méně řádků na stránce" style={{ padding: "2px 7px", background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 5, color: T.textMuted, cursor: "pointer", fontSize: 13, lineHeight: 1 }}>−</button>
+            <span style={{ color: T.textMuted, fontSize: 11, minWidth: 28, textAlign: "center" }}>{PAGE_SIZE} řád.</span>
+            <button onClick={() => setPageSize(s => Math.min(50, s + 1))} title="Více řádků na stránce" style={{ padding: "2px 7px", background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 5, color: T.textMuted, cursor: "pointer", fontSize: 13, lineHeight: 1 }}>+</button>
+          </span>
         </>}
       </div>
 
