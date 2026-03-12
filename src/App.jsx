@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-// BUILD: 2026_03_12_build0056
+// BUILD: 2026_03_12_build0057
 // ============================================================
 // POZNÁMKY PRO CLAUDE (čti na začátku každé session)
 // ============================================================
@@ -132,6 +132,11 @@ import * as XLSX from "xlsx";
 // BUILD0055 — FIX legenda grafu Kat. I/II
 //   Legenda přesunuta z SVG do HTML, Kat.I/II sekce odděleny
 // BUILD0056 — FIX build error: renderBars HTML legenda mimo return
+//   Přidán React fragment <> kolem svg+legenda
+// BUILD0057 — 3 opravy filtrovací lišty a grafu
+//   1. Graf: firma labels horizontálně, font 9→11, fontWeight 600
+//   2. Export: custom dropdown → NativeSelect (stejný styl jako filtry)
+//   3. Všechna tlačítka lišty: height: 28px (sjednocená výška)
 //   Přidán React fragment <> kolem svg+legenda
 //   Legenda přesunuta z SVG do HTML pod grafem
 //   Kat. I a Kat. II každá ve svém řádku se svými barvami
@@ -286,7 +291,7 @@ function NativeSelect({ value, onChange, options, style, isDark = true }) {
       onMouseEnter={openDropdown}
       onMouseLeave={() => setTimeout(() => setOpen(false), 480)}
     >
-      <button style={{ width: "auto", padding: "7px 20px 7px 10px", background: bg, border: `1px solid ${border}`, borderRadius: 7, color: textColor, cursor: "pointer", fontSize: 13, textAlign: "left", display: "inline-block", whiteSpace: "nowrap", position: "relative", minWidth: 80 }}>
+      <button style={{ width: "auto", padding: "0 20px 0 10px", height: 28, background: bg, border: `1px solid ${border}`, borderRadius: 7, color: textColor, cursor: "pointer", fontSize: 12, textAlign: "left", display: "inline-flex", alignItems: "center", whiteSpace: "nowrap", position: "relative", minWidth: 80 }}>
         <span>{value}</span>
         <span style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", fontSize: 9, color: isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.45)", pointerEvents: "none" }}>▼</span>
       </button>
@@ -2750,46 +2755,38 @@ export default function App() {
         <NativeSelect value={filterFirma} onChange={setFilterFirma} options={["Všechny firmy", ...firmy.map(f => f.hodnota)]} isDark={isDark} style={{ width: 130, flexShrink: 0 }} />
         <NativeSelect value={filterObjed} onChange={setFilterObjed} options={["Všichni objednatelé", ...objednatele]} isDark={isDark} style={{ width: 145, flexShrink: 0 }} />
         <NativeSelect value={filterSV} onChange={setFilterSV} options={["Všichni stavbyvedoucí", ...stavbyvedouci]} isDark={isDark} style={{ width: 155, flexShrink: 0 }} />
-        <button onClick={() => setShowAdvFilter(v => !v)} onMouseEnter={e => showTooltip(e, "Rozšířený filtr: rok, částka, prošlé termíny")} onMouseLeave={hideTooltip} style={{ padding: "4px 8px", background: showAdvFilter ? "rgba(37,99,235,0.25)" : (isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)"), border: `1px solid ${showAdvFilter ? "rgba(37,99,235,0.5)" : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.15)")}`, borderRadius: 7, color: showAdvFilter ? "#60a5fa" : T.text, cursor: "pointer", fontSize: 12, fontWeight: showAdvFilter ? 700 : 400, whiteSpace: "nowrap", flexShrink: 0 }}>Filtr {showAdvFilter ? "▲" : "▼"}</button>
+        <button onClick={() => setShowAdvFilter(v => !v)} onMouseEnter={e => showTooltip(e, "Rozšířený filtr: rok, částka, prošlé termíny")} onMouseLeave={hideTooltip} style={{ padding: "0 8px", height: 28, background: showAdvFilter ? "rgba(37,99,235,0.25)" : (isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)"), border: `1px solid ${showAdvFilter ? "rgba(37,99,235,0.5)" : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.15)")}`, borderRadius: 7, color: showAdvFilter ? "#60a5fa" : T.text, cursor: "pointer", fontSize: 12, fontWeight: showAdvFilter ? 700 : 400, whiteSpace: "nowrap", flexShrink: 0 }}>Filtr {showAdvFilter ? "▲" : "▼"}</button>
         <div style={{ display: "flex", gap: 2, flexShrink: 0, background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)", borderRadius: 7, padding: 2, border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.12)"}` }}>
           {[["page","📋 Stránky"],["scroll","📜 Vše"]].map(([vm, lbl]) => (
-            <button key={vm} onClick={() => setViewMode(vm)} style={{ padding: "3px 7px", background: viewMode === vm ? (isDark ? "rgba(37,99,235,0.4)" : "#2563eb") : "transparent", border: "none", borderRadius: 5, color: viewMode === vm ? "#fff" : T.textMuted, cursor: "pointer", fontSize: 11, fontWeight: viewMode === vm ? 700 : 400, whiteSpace: "nowrap" }}>{lbl}</button>
+            <button key={vm} onClick={() => setViewMode(vm)} style={{ padding: "0 7px", height: 28, background: viewMode === vm ? (isDark ? "rgba(37,99,235,0.4)" : "#2563eb") : "transparent", border: "none", borderRadius: 5, color: viewMode === vm ? "#fff" : T.textMuted, cursor: "pointer", fontSize: 11, fontWeight: viewMode === vm ? 700 : 400, whiteSpace: "nowrap" }}>{lbl}</button>
           ))}
         </div>
         <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
-          <span style={{ background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)", border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.15)"}`, borderRadius: 7, padding: "3px 8px", color: T.text, fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>{filtered.length} záz.</span>
-          <button onClick={() => setShowGraf(true)} onMouseEnter={e => showTooltip(e, "Sloupcový graf nákladů")} onMouseLeave={hideTooltip} style={{ padding: "6px 10px", background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.15)"}`, borderRadius: 7, color: T.text, cursor: "pointer", fontSize: 12, whiteSpace: "nowrap" }}>📊 Graf</button>
-          <div style={{ position: "relative", flexShrink: 0 }}>
-            <button ref={exportBtnRef} onClick={() => {
-              if (!showExport && exportBtnRef.current) {
-                const r = exportBtnRef.current.getBoundingClientRect();
-                setExportPos({ top: r.bottom + 4, right: window.innerWidth - r.right });
-              }
-              setShowExport(v => !v);
-            }} onMouseEnter={e => showTooltip(e, "Exportovat data (CSV, Excel, PDF)")} onMouseLeave={hideTooltip} style={{ padding: "4px 8px", background: showExport ? (isDark ? "rgba(37,99,235,0.25)" : "rgba(37,99,235,0.1)") : (isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)"), border: `1px solid ${showExport ? "rgba(37,99,235,0.5)" : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.15)")}`, borderRadius: 7, color: showExport ? "#60a5fa" : T.text, cursor: "pointer", fontSize: 12, whiteSpace: "nowrap" }}>⬇ Export {showExport ? "▲" : "▾"}</button>
-            {showExport && (
-              <>
-              <div style={{ position: "fixed", inset: 0, zIndex: 1099 }} onClick={() => setShowExport(false)} />
-              <div style={{ position: "fixed", top: exportPos.top, right: exportPos.right, background: isDark ? "#1e293b" : "#fff", border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`, borderRadius: 10, padding: "6px 6px", zIndex: 1100, minWidth: 180, boxShadow: "0 12px 32px rgba(0,0,0,0.3)" }}>
-                <button onClick={exportCSV} style={{ display: "block", width: "100%", padding: "9px 14px", background: "none", border: "none", color: T.text, cursor: "pointer", fontSize: 13, textAlign: "left", borderRadius: 6 }} onMouseEnter={e => e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)"} onMouseLeave={e => e.currentTarget.style.background = "none"}>📄 CSV (.csv)</button>
-                <button onClick={exportXLS} style={{ display: "block", width: "100%", padding: "9px 14px", background: "none", border: "none", color: T.text, cursor: "pointer", fontSize: 13, textAlign: "left", borderRadius: 6 }} onMouseEnter={e => e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)"} onMouseLeave={e => e.currentTarget.style.background = "none"}>📊 Excel (.xlsx)</button>
-                <button onClick={exportXLSColor} style={{ display: "block", width: "100%", padding: "9px 14px", background: "none", border: "none", color: T.text, cursor: "pointer", fontSize: 13, textAlign: "left", borderRadius: 6 }} onMouseEnter={e => e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)"} onMouseLeave={e => e.currentTarget.style.background = "none"}>🎨 Barevný Excel (.xls)</button>
-                {isAdmin && <><div style={{ height: 1, background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)", margin: "4px 0" }} /><button onClick={exportLog} style={{ display: "block", width: "100%", padding: "9px 14px", background: "none", border: "none", color: T.text, cursor: "pointer", fontSize: 13, textAlign: "left", borderRadius: 6 }} onMouseEnter={e => e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)"} onMouseLeave={e => e.currentTarget.style.background = "none"}>📜 Export logu (.xls)</button></>}
-                <button onClick={exportPDF} style={{ display: "block", width: "100%", padding: "9px 14px", background: "none", border: "none", color: T.text, cursor: "pointer", fontSize: 13, textAlign: "left", borderRadius: 6 }} onMouseEnter={e => e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)"} onMouseLeave={e => e.currentTarget.style.background = "none"}>🖨️ PDF tisk</button>
-              </div>
-              </>
-            )}
-          </div>
-          {isSuperAdmin && <button onClick={zalohaExcel} onMouseEnter={e => showTooltip(e, "Záloha celé DB: stavby + číselníky + uživatelé (Excel, 3 listy)")} onMouseLeave={hideTooltip} style={{ padding: "6px 10px", background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.15)"}`, borderRadius: 7, color: T.text, cursor: "pointer", fontSize: 12, whiteSpace: "nowrap" }}>💾 Záloha</button>}
+          <span style={{ background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)", border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.15)"}`, borderRadius: 7, padding: "0 8px", height: 28, display: "inline-flex", alignItems: "center", color: T.text, fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>{filtered.length} záz.</span>
+          <button onClick={() => setShowGraf(true)} onMouseEnter={e => showTooltip(e, "Sloupcový graf nákladů")} onMouseLeave={hideTooltip} style={{ padding: "0 10px", height: 28, background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.15)"}`, borderRadius: 7, color: T.text, cursor: "pointer", fontSize: 12, whiteSpace: "nowrap" }}>📊 Graf</button>
+          <NativeSelect
+            value="⬇ Export"
+            onChange={v => {
+              if (v === "📄 CSV (.csv)")           exportCSV();
+              else if (v === "📊 Excel (.xlsx)")   exportXLS();
+              else if (v === "🎨 Barevný Excel")   exportXLSColor();
+              else if (v === "📜 Export logu")     exportLog();
+              else if (v === "🖨️ PDF tisk")        exportPDF();
+            }}
+            options={["⬇ Export", "📄 CSV (.csv)", "📊 Excel (.xlsx)", "🎨 Barevný Excel", ...(isAdmin ? ["📜 Export logu"] : []), "🖨️ PDF tisk"]}
+            isDark={isDark}
+            style={{ flexShrink: 0 }}
+          />
+          {isSuperAdmin && <button onClick={zalohaExcel} onMouseEnter={e => showTooltip(e, "Záloha celé DB: stavby + číselníky + uživatelé (Excel, 3 listy)")} onMouseLeave={hideTooltip} style={{ padding: "0 10px", height: 28, background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.15)"}`, borderRadius: 7, color: T.text, cursor: "pointer", fontSize: 12, whiteSpace: "nowrap" }}>💾 Záloha</button>}
           {isSuperAdmin && <>
             <input ref={importRef} type="file" accept=".xlsx,.xls" onChange={handleImport} style={{ display: "none" }} />
-            <button onClick={() => importRef.current?.click()} onMouseEnter={e => showTooltip(e, "Import staveb z původní tabulky nebo zálohy DB (Excel)")} onMouseLeave={hideTooltip} style={{ padding: "4px 8px", background: isDark ? "rgba(251,191,36,0.1)" : "rgba(251,191,36,0.15)", border: `1px solid ${isDark ? "rgba(251,191,36,0.3)" : "rgba(251,191,36,0.5)"}`, borderRadius: 7, color: "#f59e0b", cursor: "pointer", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>📥 Import</button>
+            <button onClick={() => importRef.current?.click()} onMouseEnter={e => showTooltip(e, "Import staveb z původní tabulky nebo zálohy DB (Excel)")} onMouseLeave={hideTooltip} style={{ padding: "0 10px", height: 28, background: isDark ? "rgba(251,191,36,0.1)" : "rgba(251,191,36,0.15)", border: `1px solid ${isDark ? "rgba(251,191,36,0.3)" : "rgba(251,191,36,0.5)"}`, borderRadius: 7, color: "#f59e0b", cursor: "pointer", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>📥 Import</button>
           </>}
           {isEditor && (
             <button
               onMouseEnter={e => showTooltip(e, "Přidat novou stavbu")} onMouseLeave={hideTooltip}
               onClick={() => { if (isDemo && data.length >= DEMO_MAX_STAVBY) { showToast(`Demo verze: maximum ${DEMO_MAX_STAVBY} staveb.`, "error"); return; } setAdding(true); }}
-              style={{ padding: "7px 14px", background: isDemo && data.length >= DEMO_MAX_STAVBY ? "rgba(100,116,139,0.4)" : "linear-gradient(135deg,#16a34a,#15803d)", border: "none", borderRadius: 7, color: "#fff", cursor: isDemo && data.length >= DEMO_MAX_STAVBY ? "not-allowed" : "pointer", fontSize: 12, fontWeight: 600 }}
+              style={{ padding: "0 14px", height: 28, background: isDemo && data.length >= DEMO_MAX_STAVBY ? "rgba(100,116,139,0.4)" : "linear-gradient(135deg,#16a34a,#15803d)", border: "none", borderRadius: 7, color: "#fff", cursor: isDemo && data.length >= DEMO_MAX_STAVBY ? "not-allowed" : "pointer", fontSize: 12, fontWeight: 600 }}
             >{isDemo ? `+ Přidat stavbu (${data.length}/${DEMO_MAX_STAVBY})` : "+ Přidat stavbu"}</button>
           )}
         </div>
