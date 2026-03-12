@@ -2305,7 +2305,8 @@ export default function App() {
 
   // PAGE_SIZE: fixní hodnota, uživatel může měnit tlačítky v paginaci
   const [PAGE_SIZE, setPageSize] = useState(7);
-    useEffect(() => { setPage(0); }, [filterFirma, filterText, filterObjed, filterSV, filterRok, filterCastkaOd, filterCastkaDo, filterProslé, filterFakturace, filterKat]);
+  const [page, setPage] = useState(0);
+  useEffect(() => { setPage(0); }, [filterFirma, filterText, filterObjed, filterSV, filterRok, filterCastkaOd, filterCastkaDo, filterProslé, filterFakturace, filterKat]);
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
