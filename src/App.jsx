@@ -248,9 +248,9 @@ function NativeSelect({ value, onChange, options, style, isDark = true }) {
       onMouseEnter={openDropdown}
       onMouseLeave={() => setTimeout(() => setOpen(false), 480)}
     >
-      <button style={{ width: "100%", padding: "7px 24px 7px 10px", background: bg, border: `1px solid ${border}`, borderRadius: 7, color: textColor, cursor: "pointer", fontSize: 13, textAlign: "left", display: "flex", alignItems: "center", justifyContent: "space-between", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", position: "relative" }}>
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{value}</span>
-        <span style={{ position: "absolute", right: 7, top: "50%", transform: "translateY(-50%)", fontSize: 10, color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)", flexShrink: 0, pointerEvents: "none" }}>▼</span>
+      <button style={{ width: "100%", padding: "7px 22px 7px 10px", background: bg, border: `1px solid ${border}`, borderRadius: 7, color: textColor, cursor: "pointer", fontSize: 13, textAlign: "left", display: "flex", alignItems: "center", justifyContent: "space-between", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", position: "relative" }}>
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", paddingRight: 4 }}>{value}</span>
+        <span style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", fontSize: 9, color: isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.45)", flexShrink: 0, pointerEvents: "none" }}>▼</span>
       </button>
       {open && (
         <div style={{ position: "fixed", top: dropUp ? "auto" : dropPos.top, bottom: dropUp ? window.innerHeight - dropPos.top : "auto", left: dropPos.left, width: dropPos.width, background: dropBg, border: `1px solid ${border}`, borderRadius: 8, zIndex: 9999, boxShadow: dropShadow, overflow: "auto", maxHeight: 280 }}>
@@ -2798,12 +2798,12 @@ export default function App() {
                           : col.type === "number" ? fmtN(row[col.key])
                           : col.truncate ? <span title={row[col.key] ?? ""} style={{ display: "inline-block", maxWidth: col.width - 22, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", verticalAlign: "middle" }}>{row[col.key] ?? ""}</span>
                           : isOverdue ? <span>⚠️ {row[col.key]}</span>
-                          : col.key === "cislo_faktury" && row[col.key] ? <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ fontWeight: 600, fontSize: 14, color: "#ff6b6b", lineHeight: 1, flexShrink: 0, textShadow: "0 0 6px rgba(255,107,107,0.8)" }}>e</span>{row[col.key]}</span>
+                          : col.key === "cislo_faktury" && row[col.key] ? <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ fontWeight: 700, fontSize: 13, color: "#ef4444", lineHeight: 1, flexShrink: 0, textShadow: "0 0 6px #ef4444, 0 0 12px rgba(239,68,68,0.7)" }}>e</span>{row[col.key]}</span>
                           : row[col.key] ?? ""}
                         </div>
                         {/* Druhý řádek pro fakturační sloupce */}
                         {col.key === "cislo_faktury" && row.cislo_faktury_2 && (
-                          <div style={{ borderTop: `1px dashed ${T.cellBorder}`, marginTop: 2, paddingTop: 2, display: "flex", alignItems: "center", gap: 4 }}><span style={{ fontWeight: 600, fontSize: 14, color: "#ffd700", lineHeight: 1, flexShrink: 0, textShadow: "0 0 6px rgba(255,215,0,0.8)" }}>S</span>{row.cislo_faktury_2}</div>
+                          <div style={{ borderTop: `1px dashed ${T.cellBorder}`, marginTop: 2, paddingTop: 2, display: "flex", alignItems: "center", gap: 4 }}><span style={{ fontWeight: 700, fontSize: 13, color: "#facc15", lineHeight: 1, flexShrink: 0, textShadow: "0 0 6px #facc15, 0 0 12px rgba(250,204,21,0.7)" }}>S</span>{row.cislo_faktury_2}</div>
                         )}
                         {col.key === "castka_bez_dph" && row.castka_bez_dph_2 > 0 && (
                           <div style={{ borderTop: `1px dashed ${T.cellBorder}`, marginTop: 2, paddingTop: 2 }}>{fmtN(row.castka_bez_dph_2)}</div>
