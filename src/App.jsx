@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-// BUILD: 2026_03_13_build0076
+// BUILD: 2026_03_13_build0077
 // ============================================================
 // POZNÁMKY PRO CLAUDE (čti na začátku každé session)
 // ============================================================
@@ -150,6 +150,9 @@ import * as XLSX from "xlsx";
 // BUILD0068 — brightness(2) + bílý glow — příliš agresivní
 // BUILD0069 — nadpisová ikona brightness(1.4), ikony v textu bez filtru
 // BUILD0070 — všechny ikony brightness(1.4)
+// BUILD0077 — FIX: kartičky zobrazovaly jen header (firma+číslo), tělo chybělo
+//   Odstraněn overflow:hidden z root divu StavbaCard (ořezával obsah)
+//   Přidán minHeight:0 na card view kontejner (iOS flex fix)
 // BUILD0076 — FIX: kartičky nefungovaly na iPhone (Chrome/Safari/Firefox)
 //   window.innerWidth nespolehlivý na iOS WebKit → přechod na window.matchMedia
 //   useIsMobile: mq.matches + mq.addEventListener("change") místo resize listeneru
@@ -1970,7 +1973,7 @@ function StavbaCard({ row, isEditor, isAdmin, isDark, firmy, onEdit, onCopy, onD
   const dividerC = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)";
 
   return (
-    <div style={{ background: cardBg, borderRadius: 14, border: `1px solid ${borderC}`, overflow: "hidden", fontFamily: "'Segoe UI',sans-serif" }}>
+    <div style={{ background: cardBg, borderRadius: 14, border: `1px solid ${borderC}`, fontFamily: "'Segoe UI',sans-serif" }}>
 
       {/* header */}
       <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 14px", borderBottom: `1px solid ${dividerC}` }}>
@@ -3009,7 +3012,7 @@ export default function App() {
 
       {/* CARD VIEW (mobil) */}
       {cardView && (
-        <div style={{ overflowY: "auto", flex: 1, padding: "10px 10px", display: "flex", flexDirection: "column", gap: 10, background: isDark ? "#0f172a" : "#f1f5f9" }}>
+        <div style={{ overflowY: "auto", flex: 1, minHeight: 0, padding: "10px 10px", display: "flex", flexDirection: "column", gap: 10, background: isDark ? "#0f172a" : "#f1f5f9" }}>
           {displayRows.length === 0 && (
             <div style={{ textAlign: "center", padding: 48, color: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)", fontSize: 14 }}>Žádné záznamy</div>
           )}
