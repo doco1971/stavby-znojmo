@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-// BUILD: 2026_03_13_build0083
+// BUILD: 2026_03_13_build0085
 // ============================================================
 // POZNÁMKY PRO CLAUDE (čti na začátku každé session)
 // ============================================================
@@ -65,6 +65,12 @@ import * as XLSX from "xlsx";
 // PENDING FUNKCE (dohodnuté, zatím neimplementované)
 // ============================================================
 // [PENDING] 🎨 Layout / rozmístění na ploše — až po dokončení všech funkcí
+// [PENDING] 📱 iOS klávesnice — přihlašovací obrazovka se roztáhne při psaní
+// [PENDING] 📱 iOS klávesnice — alert okno (⚠️ Termíny) přetéká mimo obrazovku
+// [PENDING] 📱 Překrývání tlačítek Export (⬇) a + Přidat stavbu na mobilu
+// [PENDING] 🪟 Plovoucí okna — formuláře (přidat/editovat stavbu) jako draggable modály
+// [PENDING] ↔️  Drag & drop přehazování sloupců tabulky myší
+// [PENDING] ↔️  Změna šířky sloupců tabulky tažením myší
 //
 // PRAVIDLA EXPORTU (platí od BUILD0052)
 // ============================================================
@@ -150,6 +156,16 @@ import * as XLSX from "xlsx";
 // BUILD0068 — brightness(2) + bílý glow — příliš agresivní
 // BUILD0069 — nadpisová ikona brightness(1.4), ikony v textu bez filtru
 // BUILD0070 — všechny ikony brightness(1.4)
+// BUILD0085 — Aktualizace PENDING sekce v hlavičce
+//   Přidány iOS mobilní problémy (klávesnice, alert, překrývání tlačítek)
+//   Přidány dohodnuté budoucí funkce (plovoucí okna, D&D sloupce, resize sloupce)
+// BUILD0084 — 💎 Liquid Glass téma
+//   Tlačítko 💎 vedle 🌞/🌙 (desktop i mobilní menu)
+//   liquidGlass state: uložen v localStorage
+//   T objekt: backdropFilter, boxShadow, průsvitné barvy pro LG variantu
+//   Pozadí appky: gradient místo flat barvy při LG aktivním
+//   Header + filtrovací lišta: backdropFilter/WebkitBackdropFilter aplikován
+//   Nápověda: sekce téma aktualizována
 // BUILD0083 — Nápověda aktualizována pro mobilní funkce
 //   📱 Mobilní zobrazení — kartičky: rozšířený popis (metriky, stavy, akce)
 //   ☰ Mobilní menu (hamburger): nová sekce
@@ -2265,6 +2281,9 @@ export default function App() {
   const [theme, setTheme] = useState(() => {
     try { return localStorage.getItem("theme") || "dark"; } catch { return "dark"; }
   });
+  const [liquidGlass, setLiquidGlass] = useState(() => {
+    try { return localStorage.getItem("liquidGlass") === "1"; } catch { return false; }
+  });
   const [exportPreview, setExportPreview] = useState(null);
 
   const isDarkComputed = (t) => t === "dark" || (t === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
@@ -2957,21 +2976,49 @@ export default function App() {
     setTheme(t);
     try { localStorage.setItem("theme", t); } catch {}
   };
+  const toggleLiquidGlass = () => {
+    setLiquidGlass(v => {
+      try { localStorage.setItem("liquidGlass", v ? "0" : "1"); } catch {}
+      return !v;
+    });
+  };
 
   const T = isDark ? {
-    appBg: "#0f172a", headerBg: "rgba(255,255,255,0.03)", headerBorder: "rgba(255,255,255,0.08)",
-    cardBg: "rgba(255,255,255,0.04)", cardBorder: "rgba(255,255,255,0.08)",
-    theadBg: "#1a2744", cellBorder: "rgba(255,255,255,0.07)", filterBg: "rgba(255,255,255,0.02)",
+    appBg: liquidGlass ? "transparent" : "#0f172a",
+    headerBg: liquidGlass ? "rgba(15,23,42,0.45)" : "rgba(255,255,255,0.03)",
+    headerBorder: liquidGlass ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.08)",
+    cardBg: liquidGlass ? "rgba(255,255,255,0.07)" : "rgba(255,255,255,0.04)",
+    cardBorder: liquidGlass ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.08)",
+    theadBg: liquidGlass ? "rgba(26,39,68,0.6)" : "#1a2744",
+    cellBorder: liquidGlass ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.07)",
+    filterBg: liquidGlass ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.02)",
     text: "#e2e8f0", textMuted: "rgba(255,255,255,0.45)", textFaint: "rgba(255,255,255,0.25)",
-    inputBg: "#0f172a", inputBorder: "rgba(255,255,255,0.15)", modalBg: "#1e293b",
-    dropdownBg: "#1e293b", hoverBg: "rgba(255,255,255,0.07)", numColor: "#93c5fd",
+    inputBg: liquidGlass ? "rgba(15,23,42,0.5)" : "#0f172a",
+    inputBorder: liquidGlass ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.15)",
+    modalBg: liquidGlass ? "rgba(15,23,42,0.7)" : "#1e293b",
+    dropdownBg: liquidGlass ? "rgba(15,23,42,0.85)" : "#1e293b",
+    hoverBg: liquidGlass ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.07)",
+    numColor: "#93c5fd",
+    backdropFilter: liquidGlass ? "blur(24px) saturate(180%)" : "none",
+    boxShadow: liquidGlass ? "0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)" : "none",
   } : {
-    appBg: "#f1f5f9", headerBg: "#ffffff", headerBorder: "rgba(0,0,0,0.08)",
-    cardBg: "#ffffff", cardBorder: "rgba(0,0,0,0.08)",
-    theadBg: "#dde3ed", cellBorder: "rgba(0,0,0,0.07)", filterBg: "#f8fafc",
+    appBg: liquidGlass ? "transparent" : "#f1f5f9",
+    headerBg: liquidGlass ? "rgba(255,255,255,0.55)" : "#ffffff",
+    headerBorder: liquidGlass ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.08)",
+    cardBg: liquidGlass ? "rgba(255,255,255,0.5)" : "#ffffff",
+    cardBorder: liquidGlass ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.08)",
+    theadBg: liquidGlass ? "rgba(221,227,237,0.6)" : "#dde3ed",
+    cellBorder: liquidGlass ? "rgba(0,0,0,0.06)" : "rgba(0,0,0,0.07)",
+    filterBg: liquidGlass ? "rgba(248,250,252,0.6)" : "#f8fafc",
     text: "#1e293b", textMuted: "rgba(0,0,0,0.5)", textFaint: "rgba(0,0,0,0.3)",
-    inputBg: "#ffffff", inputBorder: "rgba(0,0,0,0.2)", modalBg: "#ffffff",
-    dropdownBg: "#ffffff", hoverBg: "rgba(0,0,0,0.04)", numColor: "#2563eb",
+    inputBg: liquidGlass ? "rgba(255,255,255,0.7)" : "#ffffff",
+    inputBorder: liquidGlass ? "rgba(0,0,0,0.15)" : "rgba(0,0,0,0.2)",
+    modalBg: liquidGlass ? "rgba(255,255,255,0.75)" : "#ffffff",
+    dropdownBg: liquidGlass ? "rgba(255,255,255,0.9)" : "#ffffff",
+    hoverBg: liquidGlass ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.04)",
+    numColor: "#2563eb",
+    backdropFilter: liquidGlass ? "blur(24px) saturate(180%)" : "none",
+    boxShadow: liquidGlass ? "0 8px 32px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.8)" : "none",
   };
 
   const nextId = data.length > 0 ? data.reduce((max, r) => Math.max(max, r.id), 0) + 1 : 1;
@@ -2987,7 +3034,7 @@ export default function App() {
   const rowBg = (firma) => getFirmaColor(firma).bg;
 
   return (
-    <div style={{ height: "100dvh", maxHeight: "100dvh", background: T.appBg, fontFamily: "'Segoe UI',Tahoma,sans-serif", color: T.text, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div style={{ height: "100dvh", maxHeight: "100dvh", background: liquidGlass ? (isDark ? "linear-gradient(135deg,#0f172a 0%,#1e3a5f 40%,#312e81 70%,#0f2027 100%)" : "linear-gradient(135deg,#dbeafe 0%,#e0e7ff 40%,#f0fdf4 70%,#f1f5f9 100%)") : T.appBg, fontFamily: "'Segoe UI',Tahoma,sans-serif", color: T.text, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
       <style>{`html,body{overflow:hidden;height:100%;margin:0;padding:0} .table-wrapper{-webkit-overflow-scrolling:touch;} * { -webkit-tap-highlight-color: transparent; } @keyframes spin{to{transform:rotate(360deg)}} ${!isDark ? "table td:not(.colored-cell) { color: #1e293b; } table td:not(.colored-cell) input { color: #1e293b; } table td:not(.colored-cell) select { color: #1e293b; }" : ""}`}</style>
       {toast && (
         <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 9999, padding: "12px 20px", borderRadius: 10, background: toast.type === "error" ? "#dc2626" : "#16a34a", color: "#fff", fontSize: 13, fontWeight: 600, boxShadow: "0 8px 24px rgba(0,0,0,0.4)", maxWidth: 360 }}>
@@ -3001,7 +3048,7 @@ export default function App() {
       )}
 
       {/* HEADER */}
-      <div ref={headerRef} style={{ background: T.headerBg, borderBottom: `1px solid ${T.headerBorder}`, padding: isMobile ? "8px 12px" : "11px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+      <div ref={headerRef} style={{ background: T.headerBg, borderBottom: `1px solid ${T.headerBorder}`, padding: isMobile ? "8px 12px" : "11px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0, backdropFilter: T.backdropFilter, WebkitBackdropFilter: T.backdropFilter, boxShadow: T.boxShadow }}>
         {/* Levá část: logo */}
         <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 14 }}>
           <svg width={isMobile ? 32 : 46} height={isMobile ? 32 : 46} viewBox="0 0 80 80" fill="none">
@@ -3032,6 +3079,7 @@ export default function App() {
                 <button key={val} onClick={() => changeTheme(val)} onMouseEnter={e => showTooltip(e, label + " režim")} onMouseLeave={hideTooltip} style={{ padding: "5px 9px", background: theme === val ? (isDark ? "rgba(37,99,235,0.3)" : "rgba(37,99,235,0.15)") : "transparent", border: "none", color: theme === val ? "#60a5fa" : T.textMuted, cursor: "pointer", fontSize: 13 }}>{icon}</button>
               ))}
             </div>
+            <button onClick={toggleLiquidGlass} onMouseEnter={e => showTooltip(e, liquidGlass ? "Vypnout Liquid Glass" : "Zapnout Liquid Glass")} onMouseLeave={hideTooltip} style={{ padding: "5px 9px", background: liquidGlass ? "rgba(139,92,246,0.25)" : "rgba(255,255,255,0.05)", border: `1px solid ${liquidGlass ? "rgba(139,92,246,0.6)" : "rgba(255,255,255,0.1)"}`, borderRadius: 8, color: liquidGlass ? "#a78bfa" : T.textMuted, cursor: "pointer", fontSize: 14, fontWeight: liquidGlass ? 700 : 400, boxShadow: liquidGlass ? "0 0 12px rgba(139,92,246,0.4)" : "none" }}>💎</button>
             <button onClick={() => setShowLogoutConfirm(true)} style={{ padding: "5px 12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: T.textMuted, cursor: "pointer", fontSize: 12 }}>Odhlásit</button>
           </>}
           {/* Mobil: hamburger ☰ */}
@@ -3055,6 +3103,7 @@ export default function App() {
                 <button key={val} onClick={() => changeTheme(val)} style={{ padding: "6px 12px", background: theme === val ? "rgba(37,99,235,0.3)" : "transparent", border: "none", color: theme === val ? "#60a5fa" : T.textMuted, cursor: "pointer", fontSize: 14 }}>{icon}</button>
               ))}
             </div>
+            <button onClick={toggleLiquidGlass} style={{ padding: "6px 12px", background: liquidGlass ? "rgba(139,92,246,0.25)" : "rgba(255,255,255,0.05)", border: `1px solid ${liquidGlass ? "rgba(139,92,246,0.6)" : "rgba(255,255,255,0.1)"}`, borderRadius: 8, color: liquidGlass ? "#a78bfa" : T.textMuted, cursor: "pointer", fontSize: 14, fontWeight: liquidGlass ? 700 : 400 }}>💎</button>
             <button onClick={() => { setShowHelp(true); setShowMobileMenu(false); }} style={{ padding: "6px 12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: T.textMuted, cursor: "pointer", fontSize: 13 }}>❓ Nápověda</button>
             {isAdmin && <button onClick={() => { setShowSettings(true); setShowMobileMenu(false); if (!isDemo) loadLog(); }} style={{ padding: "6px 12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: T.textMuted, cursor: "pointer", fontSize: 13 }}>⚙️ Nastavení</button>}
             {isAdmin && <button onClick={() => { setShowLog(true); setShowMobileMenu(false); }} style={{ padding: "6px 12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: T.textMuted, cursor: "pointer", fontSize: 13 }}>📜 Log</button>}
@@ -3068,7 +3117,7 @@ export default function App() {
       <div ref={cardsRef}><SummaryCards data={data} firmy={firmy.map(f => f.hodnota)} isDark={isDark} firmaColors={Object.fromEntries(firmy.map(f => [f.hodnota, f.barva || "#2563eb"]))} isMobile={isMobile} /></div>
 
       {/* FILTERS */}
-      <div ref={filtersRef} style={{ padding: "4px 6px", display: "flex", flexDirection: "column", gap: 3, background: T.filterBg, borderBottom: `1px solid ${T.cellBorder}`, minHeight: 38 }}>
+      <div ref={filtersRef} style={{ padding: "4px 6px", display: "flex", flexDirection: "column", gap: 3, background: T.filterBg, borderBottom: `1px solid ${T.cellBorder}`, minHeight: 38, backdropFilter: T.backdropFilter, WebkitBackdropFilter: T.backdropFilter }}>
         {/* Řádek 1: hledání + firma + filtr + ▦ */}
         <div style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "nowrap", overflowX: isMobile ? "visible" : "auto" }}>
           <input placeholder="🔍 Hledat..." onMouseEnter={e => showTooltip(e, "Hledat podle názvu nebo čísla stavby")} onMouseLeave={hideTooltip} value={filterText} onChange={e => setFilterText(e.target.value)} style={{ ...inputSx, width: isMobile ? 110 : 150, minWidth: 80, background: T.inputBg, border: `1px solid ${T.inputBorder}`, color: T.text, padding: "4px 8px", fontSize: 11 }} />
@@ -3363,7 +3412,7 @@ export default function App() {
                 { icon: "⚙️", title: "Nastavení", text: "Správa firem (název + barva řádku), číselníků objednatelů a stavbyvedoucích. Admin spravuje uživatele — přidává, mění hesla a role. Role: USER (čtení), USER EDITOR (editace), ADMIN (plný přístup), SUPERADMIN (+ nastavení aplikace)." },
                 { icon: "🔔", title: "Notifikace v prohlížeči", text: "Aplikace zobrazuje upozornění na blížící se termíny i mimo otevřenou záložku. Po přihlášení prohlížeč zobrazí dialog — klikněte Povolit. Notifikace se odešlou pro stavby s termínem do 7 pracovních dní, opakují každých 60 min pokud záložka není aktivní." },
                 { icon: "⏱️", title: "Automatické odhlášení", text: "Aplikace se automaticky odhlásí po 15 minutách nečinnosti. Před odhlášením se zobrazí varování s odpočítáváním 60 sekund — klikněte Jsem tady pro pokračování. Neaktivní v demo režimu." },
-                { icon: "🌙", title: "Tmavý / světlý režim", text: "Přepínejte mezi 🌞 světlým a 🌙 tmavým režimem tlačítky v pravém horním rohu. Preference se uloží v prohlížeči." },
+                { icon: "🌙", title: "Tmavý / světlý režim + Liquid Glass", text: "Přepínejte mezi 🌞 světlým a 🌙 tmavým režimem. Tlačítko 💎 vedle přepínače aktivuje Liquid Glass — průsvitné frosted glass panely s blur efektem. Preference se ukládají v prohlížeči." },
                 { icon: "↔️", title: "Šířky sloupců", text: "Táhněte ikonu ⟺ v záhlaví sloupce pro změnu šířky (max 2000px). Kliknutím na ⟺ zadáte šířku číslem. Nastavení se uloží v databázi. Superadmin může resetovat šířky na výchozí v Nastavení → Aplikace." },
                 { icon: "📋", title: "Dva pohledy — Stránky / Vše", text: "Přepínač 📋 Stránky / 📜 Vše v liště přepíná mezi stránkovaným zobrazením (tlačítka −/+ pro počet řádků na stránce) a plným výpisem všech záznamů s vertikálním scrollem." },
                 { icon: "🔍", title: "Rozšířený filtr", text: "Tlačítko Filtr ▾ otevře plovoucí panel s rozšířenými možnostmi: rok uvedení do provozu, rozsah nabídkové ceny (od/do), prošlé termíny bez faktury, stav fakturace a kategorie I / II. Panel lze přetáhnout myší kamkoliv na plochu." },
