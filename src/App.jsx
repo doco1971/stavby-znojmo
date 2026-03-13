@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-// BUILD: 2026_03_13_build0092
+// BUILD: 2026_03_13_build0093
 // ============================================================
 // POZNÁMKY PRO CLAUDE (čti na začátku každé session)
 // ============================================================
@@ -69,7 +69,6 @@ import * as XLSX from "xlsx";
 // [PENDING] 📱 iOS klávesnice — alert okno (⚠️ Termíny) přetéká mimo obrazovku
 // [PENDING] 📱 Překrývání tlačítek Export (⬇) a + Přidat stavbu na mobilu
 // [PENDING] 🪟 Plovoucí okna — formuláře (přidat/editovat stavbu) jako draggable modály
-// [PENDING] ↔️  Drag & drop přehazování sloupců tabulky myší
 // [PENDING] ↔️  Změna šířky sloupců tabulky tažením myší
 //
 // PRAVIDLA EXPORTU (platí od BUILD0052)
@@ -156,6 +155,16 @@ import * as XLSX from "xlsx";
 // BUILD0068 — brightness(2) + bílý glow — příliš agresivní
 // BUILD0069 — nadpisová ikona brightness(1.4), ikony v textu bez filtru
 // BUILD0070 — všechny ikony brightness(1.4)
+// BUILD0093 — ↔️ Drag & drop přehazování sloupců tabulky myší
+//   colOrder state — pole klíčů sloupců v aktuálním pořadí
+//   Uloženo v localStorage (per-browser, bez DB)
+//   HTML5 Drag & Drop API na <th> elementech
+//   dragColKey ref — táhnutý sloupec, dragOverKey ref — cílový sloupec
+//   Drag handle: ⠿ vlevo od názvu sloupce (viditelné vždy, ne jen superadmin)
+//   Vizuální highlight: cílový sloupec — modrý levý border při dragover
+//   thead i tbody přepnuty z COLUMNS.filter(...) na orderedCols
+//   Reset pořadí: tlačítko v Nastavení vedle Reset šířek (jen superadmin)
+//   PENDING odstraněno: ↔️ Drag & drop přehazování sloupců
 // BUILD0092 — Jeden univerzální posuvník mezi 💎 a Odhlásit
 //   Zobrazí se po kliknutí na 🌞, 🌙 nebo 💎 — vždy na stejném místě
 //   activeSlider state: null | "theme" | "lg" — určuje co slider ovládá
@@ -1704,7 +1713,7 @@ function FirmyEditor({ list, setList, isDark, onNvChange, stavbyData }) {
   );
 }
 
-function SettingsModal({ firmy, objednatele, stavbyvedouci, users, onChange, onChangeUsers, onClose, onLoadLog, isAdmin, isSuperAdmin, isDark, appVerze, appDatum, onSaveAppInfo, stavbyData, onResetColWidths, isDemo }) {
+function SettingsModal({ firmy, objednatele, stavbyvedouci, users, onChange, onChangeUsers, onClose, onLoadLog, isAdmin, isSuperAdmin, isDark, appVerze, appDatum, onSaveAppInfo, stavbyData, onResetColWidths, onResetColOrder, isDemo }) {
   const [tab, setTab] = useState("ciselniky");
   const [f, setF] = useState([...firmy]);
   const [o, setO] = useState([...objednatele]);
@@ -1901,6 +1910,7 @@ function SettingsModal({ firmy, objednatele, stavbyvedouci, users, onChange, onC
                 <div style={{ borderTop: `1px solid ${modalBorder}`, paddingTop: 16, marginTop: 8 }}>
                   <div style={{ color: modalMuted, fontSize: 11, fontWeight: 700, letterSpacing: 1, marginBottom: 10 }}>ŠÍŘKY SLOUPCŮ</div>
                   <button onClick={() => setConfirmResetCols(true)} style={{ padding: "10px 20px", background: "rgba(168,85,247,0.12)", border: "1px solid rgba(168,85,247,0.35)", borderRadius: 8, color: "#c084fc", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>↺ Reset šířek sloupců na výchozí</button>
+                  <button onClick={() => { onResetColOrder(); }} style={{ padding: "10px 20px", background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.35)", borderRadius: 8, color: "#60a5fa", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>↺ Reset pořadí sloupců na výchozí</button>
                   <div style={{ color: modalMuted, fontSize: 11, marginTop: 8 }}>Obnoví původní šířky všech sloupců tabulky.</div>
                 </div>
               </div>
@@ -2393,6 +2403,33 @@ export default function App() {
   const [appVerze, setAppVerze] = useState("1.0");
   const [appDatum, setAppDatum] = useState("2025");
 
+  // Pořadí sloupců — uloženo v localStorage
+  const defaultColOrder = COLUMNS.filter(c => c.key !== "id" && !c.hidden).map(c => c.key);
+  const [colOrder, setColOrder] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("colOrder") || "null");
+      if (Array.isArray(saved) && saved.length === defaultColOrder.length) return saved;
+    } catch {}
+    return defaultColOrder;
+  });
+  const dragColKey = useRef(null);
+  const dragOverKey = useRef(null);
+  const [dragOverState, setDragOverState] = useState(null); // pro vizuální highlight
+
+  const saveColOrder = (order) => {
+    try { localStorage.setItem("colOrder", JSON.stringify(order)); } catch {}
+  };
+  const resetColOrder = () => {
+    setColOrder(defaultColOrder);
+    saveColOrder(defaultColOrder);
+  };
+
+  // orderedCols — COLUMNS seřazené dle colOrder
+  const orderedCols = colOrder
+    .map(key => COLUMNS.find(c => c.key === key))
+    .filter(Boolean)
+    .filter(c => !c.hidden);
+
   useEffect(() => {
     sb("nastaveni?klic=eq.app_info").then(res => {
       if (res && res[0]) {
@@ -2456,6 +2493,48 @@ export default function App() {
   };
 
   const getColWidth = (col) => colWidths[col.key] ?? col.width;
+
+  // Drag & drop handlery pro přehazování sloupců
+  const handleColDragStart = (e, colKey) => {
+    dragColKey.current = colKey;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", colKey);
+  };
+  const handleColDragOver = (e, colKey) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverKey.current !== colKey) {
+      dragOverKey.current = colKey;
+      setDragOverState(colKey);
+    }
+  };
+  const handleColDragLeave = () => {
+    dragOverKey.current = null;
+    setDragOverState(null);
+  };
+  const handleColDrop = (e, targetKey) => {
+    e.preventDefault();
+    const srcKey = dragColKey.current;
+    if (!srcKey || srcKey === targetKey) { setDragOverState(null); return; }
+    setColOrder(prev => {
+      const next = [...prev];
+      const fromIdx = next.indexOf(srcKey);
+      const toIdx = next.indexOf(targetKey);
+      if (fromIdx === -1 || toIdx === -1) return prev;
+      next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, srcKey);
+      saveColOrder(next);
+      return next;
+    });
+    dragColKey.current = null;
+    dragOverKey.current = null;
+    setDragOverState(null);
+  };
+  const handleColDragEnd = () => {
+    dragColKey.current = null;
+    dragOverKey.current = null;
+    setDragOverState(null);
+  };
 
   // ── Načtení dat z Supabase ─────────────────────────────────
   const loadAll = useCallback(async (isDemo = false) => {
@@ -3404,7 +3483,7 @@ export default function App() {
           <colgroup>
             <col style={{ width: 40 }} />
             {(isAdmin || isEditor) && <col style={{ width: 90 }} />}
-            {COLUMNS.filter(col => col.key !== "id" && !col.hidden).map(col => (
+            {orderedCols.map(col => (
               <col key={col.key} style={{ width: getColWidth(col) }} />
             ))}
             {(isAdmin || isEditor) && <col style={{ width: 120 }} />}
@@ -3413,9 +3492,18 @@ export default function App() {
             <tr style={{ background: T.theadBg }}>
               <th style={{ padding: "9px 11px", textAlign: "center", color: T.textMuted, fontWeight: 700, fontSize: 10.5, letterSpacing: 0.4, whiteSpace: "nowrap", minWidth: 40, position: "sticky", top: 0, background: T.theadBg, zIndex: 10, border: `1px solid ${T.cellBorder}` }}>#</th>
               {(isAdmin || isEditor) && <th style={{ padding: "9px 11px", color: T.textMuted, fontWeight: 700, fontSize: 10.5, position: "sticky", top: 0, background: T.theadBg, zIndex: 10, border: `1px solid ${T.cellBorder}`, textAlign: "center" }}>AKCE</th>}
-              {COLUMNS.filter(col => col.key !== "id" && !col.hidden).map(col => (
-                <th key={col.key} style={{ padding: "6px 4px 6px 8px", textAlign: "center", color: T.textMuted, fontWeight: 700, fontSize: 10.5, letterSpacing: 0.4, width: getColWidth(col), minWidth: 0, position: "sticky", top: 0, background: T.theadBg, zIndex: 10, border: `1px solid ${T.cellBorder}`, userSelect: "none" }}>
+              {orderedCols.map(col => (
+                <th key={col.key}
+                  draggable
+                  onDragStart={e => handleColDragStart(e, col.key)}
+                  onDragOver={e => handleColDragOver(e, col.key)}
+                  onDragLeave={handleColDragLeave}
+                  onDrop={e => handleColDrop(e, col.key)}
+                  onDragEnd={handleColDragEnd}
+                  style={{ padding: "6px 4px 6px 8px", textAlign: "center", color: T.textMuted, fontWeight: 700, fontSize: 10.5, letterSpacing: 0.4, width: getColWidth(col), minWidth: 0, position: "sticky", top: 0, background: dragOverState === col.key ? (isDark ? "rgba(37,99,235,0.25)" : "rgba(37,99,235,0.12)") : T.theadBg, zIndex: 10, border: `1px solid ${T.cellBorder}`, borderLeft: dragOverState === col.key ? "2px solid #3b82f6" : `1px solid ${T.cellBorder}`, userSelect: "none", cursor: "grab", transition: "background 0.1s, border-left 0.1s" }}
+                >
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, width: "100%", minWidth: 0 }}>
+                    <span style={{ color: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.25)", fontSize: 11, flexShrink: 0, cursor: "grab", lineHeight: 1 }} title="Táhni pro přesun sloupce">⠿</span>
                     <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, textAlign: "center", minWidth: 0 }}>{col.label.toUpperCase()}</span>
                     {isSuperAdmin && (
                       editingColWidth === col.key
@@ -3467,7 +3555,7 @@ export default function App() {
                     </button>}
                   </td>
                 )}
-                {COLUMNS.filter(col => col.key !== "id" && !col.hidden).map(col => {
+                {orderedCols.map(col => {
                   const centerCols = ["cislo_stavby","ukonceni","sod","ze_dne","cislo_faktury","splatna"];
                   const align = col.type === "number" ? "right" : centerCols.includes(col.key) ? "center" : "left";
 
@@ -3857,7 +3945,7 @@ export default function App() {
       {adding && <FormModal title="➕ Nová stavba" initial={emptyRow} onSave={handleAdd} onClose={() => setAdding(false)} firmy={firmy.map(f => f.hodnota)} objednatele={objednatele} stavbyvedouci={stavbyvedouci} />}
       {editRow && <FormModal title={`✏️ Editace stavby #${editRow.id}`} initial={editRow} onSave={handleSave} onClose={() => setEditRow(null)} firmy={firmy.map(f => f.hodnota)} objednatele={objednatele} stavbyvedouci={stavbyvedouci} />}
       {copyRow && <FormModal title="📋 Kopírovat stavbu" initial={copyRow} onSave={handleCopySave} onClose={() => setCopyRow(null)} firmy={firmy.map(f => f.hodnota)} objednatele={objednatele} stavbyvedouci={stavbyvedouci} />}
-      {showSettings && <SettingsModal firmy={firmy} objednatele={objednatele} stavbyvedouci={stavbyvedouci} users={users} onChange={saveSettings} onChangeUsers={saveUsers} onClose={() => setShowSettings(false)} onLoadLog={loadLog} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} isDark={isDark} appVerze={appVerze} appDatum={appDatum} onSaveAppInfo={saveAppInfo} stavbyData={data} onResetColWidths={() => { setColWidths({}); saveColWidths({}); }} isDemo={isDemo} />}
+      {showSettings && <SettingsModal firmy={firmy} objednatele={objednatele} stavbyvedouci={stavbyvedouci} users={users} onChange={saveSettings} onChangeUsers={saveUsers} onClose={() => setShowSettings(false)} onLoadLog={loadLog} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} isDark={isDark} appVerze={appVerze} appDatum={appDatum} onSaveAppInfo={saveAppInfo} stavbyData={data} onResetColWidths={() => { setColWidths({}); saveColWidths({}); }} onResetColOrder={resetColOrder} isDemo={isDemo} />}
 
       {showOrphanWarning && (() => {
         const firmyNames = firmy.map(f => f.hodnota);
