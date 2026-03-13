@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-// BUILD: 2026_03_13_build0077
+// BUILD: 2026_03_13_build0078
 // ============================================================
 // POZNÁMKY PRO CLAUDE (čti na začátku každé session)
 // ============================================================
@@ -150,6 +150,10 @@ import * as XLSX from "xlsx";
 // BUILD0068 — brightness(2) + bílý glow — příliš agresivní
 // BUILD0069 — nadpisová ikona brightness(1.4), ikony v textu bez filtru
 // BUILD0070 — všechny ikony brightness(1.4)
+// BUILD0078 — FIX: mobilní layout — souhrny a deadline modál mimo obrazovku
+//   Deadline modál: width min(820px,96vw), padding inset, ✕ tlačítko flexShrink:0
+//   SummaryCards: isMobile prop → kompaktní řádkový layout místo karet
+//   Firmy na mobilu: tečka + název + celkem + Kat.I/II v jednom řádku
 // BUILD0077 — FIX: kartičky zobrazovaly jen header (firma+číslo), tělo chybělo
 //   Odstraněn overflow:hidden z root divu StavbaCard (ořezával obsah)
 //   Přidán minHeight:0 na card view kontejner (iOS flex fix)
@@ -1140,11 +1144,10 @@ function Login({ onLogin, users, onLogAction }) {
 // ============================================================
 // SUMMARY CARDS
 // ============================================================
-function SummaryCards({ data, firmy, isDark, firmaColors }) {
+function SummaryCards({ data, firmy, isDark, firmaColors, isMobile }) {
   const sum = (firma, fields) => data.filter(r => r.firma === firma).reduce((a, r) => { fields.forEach(f => a += Number(r[f])||0); return a; }, 0);
   const sumAll = (fields) => data.reduce((a, r) => { fields.forEach(f => a += Number(r[f])||0); return a; }, 0);
   const bg = isDark ? "#0f172a" : "#f1f5f9";
-  const cardBg = isDark ? "rgba(255,255,255,0.04)" : "#ffffff";
   const textMuted = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.45)";
   const textMain = isDark ? "#fff" : "#1e293b";
   const groupBorder = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.08)";
@@ -1152,6 +1155,42 @@ function SummaryCards({ data, firmy, isDark, firmaColors }) {
   const totalI = sumAll(["ps_i","snk_i","bo_i"]);
   const totalII = sumAll(["ps_ii","bo_ii","poruch"]);
   const totalCelkem = totalI + totalII;
+
+  if (isMobile) {
+    return (
+      <div style={{ background: bg, padding: "8px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
+        {/* Celkem — kompaktní řádek */}
+        <div style={{ background: isDark ? "rgba(249,115,22,0.1)" : "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.4)", borderRadius: 10, padding: "8px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ color: "#f97316", fontSize: 11, fontWeight: 700 }}>CELKEM VŠE</span>
+          <span style={{ color: textMain, fontSize: 16, fontWeight: 800 }}>{fmt(totalCelkem)}</span>
+          <div style={{ display: "flex", gap: 6 }}>
+            <span style={{ fontSize: 10, color: "#f97316" }}>I: <strong style={{ color: textMain }}>{fmt(totalI)}</strong></span>
+            <span style={{ fontSize: 10, color: "#f97316" }}>II: <strong style={{ color: textMain }}>{fmt(totalII)}</strong></span>
+          </div>
+        </div>
+        {/* Firmy — kompaktní řádky */}
+        {firmy.map((firma) => {
+          const color = firmaColors[firma] || "#2563eb";
+          const katI = sum(firma, ["ps_i","snk_i","bo_i"]);
+          const katII = sum(firma, ["ps_ii","bo_ii","poruch"]);
+          const celkem = katI + katII;
+          return (
+            <div key={firma} style={{ background: isDark ? `${color}12` : `${color}10`, border: `1px solid ${color}40`, borderRadius: 10, padding: "7px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0 }} />
+                <span style={{ color, fontSize: 11, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{firma}</span>
+              </div>
+              <span style={{ color: textMain, fontSize: 14, fontWeight: 800, flexShrink: 0 }}>{fmt(celkem)}</span>
+              <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
+                <span style={{ fontSize: 10, color: textMuted }}>I: <strong style={{ color: textMain }}>{fmt(katI)}</strong></span>
+                <span style={{ fontSize: 10, color: textMuted }}>II: <strong style={{ color: textMain }}>{fmt(katII)}</strong></span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <div style={{ overflowX: "auto", background: bg, padding: "10px 18px" }}>
@@ -2962,7 +3001,7 @@ export default function App() {
       </div>
 
       {/* SUMMARY */}
-      <div ref={cardsRef}><SummaryCards data={data} firmy={firmy.map(f => f.hodnota)} isDark={isDark} firmaColors={Object.fromEntries(firmy.map(f => [f.hodnota, f.barva || "#2563eb"]))} /></div>
+      <div ref={cardsRef}><SummaryCards data={data} firmy={firmy.map(f => f.hodnota)} isDark={isDark} firmaColors={Object.fromEntries(firmy.map(f => [f.hodnota, f.barva || "#2563eb"]))} isMobile={isMobile} /></div>
 
       {/* FILTERS */}
       <div ref={filtersRef} style={{ padding: "4px 10px", display: "flex", gap: 4, alignItems: "center", background: T.filterBg, borderBottom: `1px solid ${T.cellBorder}`, flexWrap: "nowrap", overflowX: "auto", minHeight: 38 }}>
@@ -3556,15 +3595,15 @@ export default function App() {
       })()}
 
       {showDeadlines && deadlineWarnings.length > 0 && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Segoe UI',sans-serif" }}>
-          <div style={{ background: isDark ? "#1e293b" : "#fff", borderRadius: 16, width: 820, maxHeight: "85vh", display: "flex", flexDirection: "column", border: "1px solid rgba(239,68,68,0.4)", boxShadow: "0 32px 80px rgba(0,0,0,0.7)" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: "10px", fontFamily: "'Segoe UI',sans-serif" }}>
+          <div style={{ background: isDark ? "#1e293b" : "#fff", borderRadius: 16, width: "min(820px, 96vw)", maxHeight: "90vh", display: "flex", flexDirection: "column", border: "1px solid rgba(239,68,68,0.4)", boxShadow: "0 32px 80px rgba(0,0,0,0.7)" }}>
             {/* header */}
-            <div style={{ padding: "18px 24px", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`, display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(239,68,68,0.1)", borderRadius: "16px 16px 0 0" }}>
-              <div>
-                <h3 style={{ color: "#f87171", margin: 0, fontSize: 17 }}>⚠️ Blížící se termíny ukončení</h3>
-                <div style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.5)", fontSize: 12, marginTop: 4 }}>{deadlineWarnings.length} zakázek s termínem do 30 pracovních dní</div>
+            <div style={{ padding: "14px 18px", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`, display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(239,68,68,0.1)", borderRadius: "16px 16px 0 0", gap: 10 }}>
+              <div style={{ minWidth: 0 }}>
+                <h3 style={{ color: "#f87171", margin: 0, fontSize: 15 }}>⚠️ Blížící se termíny ukončení</h3>
+                <div style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.5)", fontSize: 11, marginTop: 3 }}>{deadlineWarnings.length} zakázek s termínem do 30 pracovních dní</div>
               </div>
-              <button onClick={() => setShowDeadlines(false)} style={{ background: "none", border: "none", color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)", fontSize: 20, cursor: "pointer" }}>✕</button>
+              <button onClick={() => setShowDeadlines(false)} style={{ background: "none", border: "none", color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)", fontSize: 22, cursor: "pointer", flexShrink: 0, padding: "0 4px" }}>✕</button>
             </div>
             {/* tabulka */}
             <div style={{ overflowY: "auto", flex: 1, padding: 24 }} id="deadline-print-area">
@@ -3601,7 +3640,7 @@ export default function App() {
               </table>
             </div>
             {/* footer */}
-            <div style={{ padding: "14px 24px", borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`, display: "flex", gap: 10, justifyContent: "flex-end" }}>
+            <div style={{ padding: "12px 18px", borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`, display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
               <button onClick={() => {
                 const firmaColorMap = Object.fromEntries(firmy.map(f => [f.hodnota, f.barva || "#3b82f6"]));
                 const rows = deadlineWarnings.map((r, i) => {
