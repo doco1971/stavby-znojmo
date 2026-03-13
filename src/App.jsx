@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-// BUILD: 2026_03_13_build0091
+// BUILD: 2026_03_13_build0092
 // ============================================================
 // POZNÁMKY PRO CLAUDE (čti na začátku každé session)
 // ============================================================
@@ -156,6 +156,18 @@ import * as XLSX from "xlsx";
 // BUILD0068 — brightness(2) + bílý glow — příliš agresivní
 // BUILD0069 — nadpisová ikona brightness(1.4), ikony v textu bez filtru
 // BUILD0070 — všechny ikony brightness(1.4)
+// BUILD0092 — Jeden univerzální posuvník mezi 💎 a Odhlásit
+//   Zobrazí se po kliknutí na 🌞, 🌙 nebo 💎 — vždy na stejném místě
+//   activeSlider state: null | "theme" | "lg" — určuje co slider ovládá
+//   Slider "theme": themeStrength (0–100), mění intenzitu appBg
+//   Slider "lg": lgStrength (10–100), mění sílu Liquid Glass efektu
+//   FIX: appBg se při themeStrength nereagoval — příčina: podmínka liquidGlass
+//        na řádku main divu ignorovala T.appBg → opraveno: darkAppBg/lightAppBg
+//        se aplikují vždy přes T.appBg, liquidGlass větev odstraněna
+//   Samostatné themeSlider/lgSlider stavy a timery nahrazeny jedním activeSlider
+//   Timer ref: sliderTimer — 2s auto-hide
+//   Desktop: slider vždy mezi 💎 a Odhlásit
+//   Mobil: slider pod 🌞/🌙/💎 tlačítky v hamburger menu
 // BUILD0091 — 🌞/🌙 posuvník intenzity pozadí + auto-hide po 2s nečinnosti
 //   themeStrength state (0–100, default 50), uložen v localStorage
 //   themeSliderVisible state + themeSliderTimer ref (stejný princip jako lgSlider)
@@ -2324,41 +2336,40 @@ export default function App() {
   const [themeStrength, setThemeStrength] = useState(() => {
     try { return parseInt(localStorage.getItem("themeStrength") || "50", 10); } catch { return 50; }
   });
-  const [themeSliderVisible, setThemeSliderVisible] = useState(false);
-  const themeSliderTimer = useRef(null);
-
-  const themeSliderStartTimer = () => {
-    if (themeSliderTimer.current) clearTimeout(themeSliderTimer.current);
-    themeSliderTimer.current = setTimeout(() => setThemeSliderVisible(false), 2000);
-  };
-  const changeThemeStrength = (v) => {
-    setThemeStrength(v);
-    try { localStorage.setItem("themeStrength", String(v)); } catch {}
-    if (themeSliderTimer.current) clearTimeout(themeSliderTimer.current);
-    themeSliderTimer.current = setTimeout(() => setThemeSliderVisible(false), 2000);
-  };
   const [liquidGlass, setLiquidGlass] = useState(() => {
     try { return localStorage.getItem("liquidGlass") === "1"; } catch { return false; }
   });
   const [lgStrength, setLgStrength] = useState(() => {
     try { return parseInt(localStorage.getItem("lgStrength") || "60", 10); } catch { return 60; }
   });
-  const [lgSliderVisible, setLgSliderVisible] = useState(false);
-  const lgSliderTimer = useRef(null);
 
-  const lgSliderStartTimer = () => {
-    if (lgSliderTimer.current) clearTimeout(lgSliderTimer.current);
-    lgSliderTimer.current = setTimeout(() => setLgSliderVisible(false), 2000);
+  // Univerzální slider — null | "theme" | "lg"
+  const [activeSlider, setActiveSlider] = useState(null);
+  const sliderTimer = useRef(null);
+
+  const sliderStartTimer = () => {
+    if (sliderTimer.current) clearTimeout(sliderTimer.current);
+    sliderTimer.current = setTimeout(() => setActiveSlider(null), 2000);
   };
-  const lgSliderResetTimer = () => {
-    if (lgSliderTimer.current) clearTimeout(lgSliderTimer.current);
-    lgSliderTimer.current = setTimeout(() => setLgSliderVisible(false), 2000);
+  const sliderResetTimer = () => {
+    if (sliderTimer.current) clearTimeout(sliderTimer.current);
+    sliderTimer.current = setTimeout(() => setActiveSlider(null), 2000);
+  };
+  const sliderShow = (type) => {
+    setActiveSlider(type);
+    if (sliderTimer.current) clearTimeout(sliderTimer.current);
+    sliderTimer.current = setTimeout(() => setActiveSlider(null), 2000);
   };
 
+  const changeThemeStrength = (v) => {
+    setThemeStrength(v);
+    try { localStorage.setItem("themeStrength", String(v)); } catch {}
+    sliderResetTimer();
+  };
   const changeLgStrength = (v) => {
     setLgStrength(v);
     try { localStorage.setItem("lgStrength", String(v)); } catch {}
-    lgSliderResetTimer();
+    sliderResetTimer();
   };
   const [exportPreview, setExportPreview] = useState(null);
 
@@ -3051,22 +3062,16 @@ export default function App() {
   const changeTheme = (t) => {
     setTheme(t);
     try { localStorage.setItem("theme", t); } catch {}
-    setThemeSliderVisible(true);
-    if (themeSliderTimer.current) clearTimeout(themeSliderTimer.current);
-    themeSliderTimer.current = setTimeout(() => setThemeSliderVisible(false), 2000);
+    sliderShow("theme");
   };
   const toggleLiquidGlass = () => {
     setLiquidGlass(v => {
       try { localStorage.setItem("liquidGlass", v ? "0" : "1"); } catch {}
       if (!v) {
-        // zapínáme — zobraz slider a spusť timer
-        setLgSliderVisible(true);
-        if (lgSliderTimer.current) clearTimeout(lgSliderTimer.current);
-        lgSliderTimer.current = setTimeout(() => setLgSliderVisible(false), 2000);
+        sliderShow("lg");
       } else {
-        // vypínáme — schuj slider okamžitě
-        setLgSliderVisible(false);
-        if (lgSliderTimer.current) clearTimeout(lgSliderTimer.current);
+        // vypínáme LG — schuj slider pokud zobrazoval lg
+        setActiveSlider(a => { if (a === "lg") { if (sliderTimer.current) clearTimeout(sliderTimer.current); return null; } return a; });
       }
       return !v;
     });
@@ -3144,7 +3149,7 @@ export default function App() {
   const rowBg = (firma) => getFirmaColor(firma).bg;
 
   return (
-    <div style={{ height: "100dvh", maxHeight: "100dvh", background: liquidGlass ? (isDark ? "#060d1a" : "#e8edf5") : T.appBg, fontFamily: "'Segoe UI',Tahoma,sans-serif", color: T.text, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
+    <div style={{ height: "100dvh", maxHeight: "100dvh", background: T.appBg, fontFamily: "'Segoe UI',Tahoma,sans-serif", color: T.text, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
       <style>{`
         html,body{overflow:hidden;height:100%;margin:0;padding:0}
         .table-wrapper{-webkit-overflow-scrolling:touch;}
@@ -3234,19 +3239,24 @@ export default function App() {
                 <button key={val} onClick={() => changeTheme(val)} onMouseEnter={e => showTooltip(e, label + " režim")} onMouseLeave={hideTooltip} style={{ padding: "5px 9px", background: theme === val ? (isDark ? "rgba(37,99,235,0.3)" : "rgba(37,99,235,0.15)") : "transparent", border: `1px solid ${theme === val ? "rgba(37,99,235,0.5)" : "rgba(255,255,255,0.1)"}`, borderRadius: 8, color: theme === val ? "#60a5fa" : T.textMuted, cursor: "pointer", fontSize: 13 }}>{icon}</button>
               ))}
             </div>
-            {themeSliderVisible && (
+            <button onClick={toggleLiquidGlass} onMouseEnter={e => showTooltip(e, liquidGlass ? "Vypnout Liquid Glass" : "Zapnout Liquid Glass")} onMouseLeave={hideTooltip} style={{ padding: "5px 9px", background: liquidGlass ? "rgba(139,92,246,0.25)" : "rgba(255,255,255,0.05)", border: `1px solid ${liquidGlass ? "rgba(139,92,246,0.6)" : "rgba(255,255,255,0.1)"}`, borderRadius: 8, color: liquidGlass ? "#a78bfa" : T.textMuted, cursor: "pointer", fontSize: 14, fontWeight: liquidGlass ? 700 : 400, boxShadow: liquidGlass ? "0 0 12px rgba(139,92,246,0.4)" : "none" }}>💎</button>
+            {/* Univerzální slider — zobrazí se mezi 💎 a Odhlásit */}
+            {activeSlider === "theme" && (
               <div style={{ display: "flex", alignItems: "center", gap: 5, background: isDark ? "rgba(129,140,248,0.12)" : "rgba(251,191,36,0.12)", border: `1px solid ${isDark ? "rgba(129,140,248,0.3)" : "rgba(251,191,36,0.3)"}`, borderRadius: 8, padding: "3px 8px" }}
-                onMouseEnter={() => { if (themeSliderTimer.current) clearTimeout(themeSliderTimer.current); }}
-                onMouseLeave={themeSliderStartTimer}
+                onMouseEnter={() => { if (sliderTimer.current) clearTimeout(sliderTimer.current); }}
+                onMouseLeave={sliderStartTimer}
                 title={`Intenzita pozadí: ${themeStrength}%`}
               >
                 <span style={{ fontSize: 10, color: isDark ? "#818cf8" : "#f59e0b", fontWeight: 700, minWidth: 26, textAlign: "right" }}>{themeStrength}%</span>
                 <input type="range" min="0" max="100" step="5" value={themeStrength} onChange={e => changeThemeStrength(Number(e.target.value))} style={{ width: 70, accentColor: isDark ? "#818cf8" : "#f59e0b", cursor: "pointer" }} />
               </div>
             )}
-            <button onClick={toggleLiquidGlass} onMouseEnter={e => showTooltip(e, liquidGlass ? "Vypnout Liquid Glass" : "Zapnout Liquid Glass")} onMouseLeave={hideTooltip} style={{ padding: "5px 9px", background: liquidGlass ? "rgba(139,92,246,0.25)" : "rgba(255,255,255,0.05)", border: `1px solid ${liquidGlass ? "rgba(139,92,246,0.6)" : "rgba(255,255,255,0.1)"}`, borderRadius: 8, color: liquidGlass ? "#a78bfa" : T.textMuted, cursor: "pointer", fontSize: 14, fontWeight: liquidGlass ? 700 : 400, boxShadow: liquidGlass ? "0 0 12px rgba(139,92,246,0.4)" : "none" }}>💎</button>
-            {liquidGlass && lgSliderVisible && (
-              <div style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.3)", borderRadius: 8, padding: "3px 8px" }} onMouseEnter={() => { if (lgSliderTimer.current) clearTimeout(lgSliderTimer.current); }} onMouseLeave={lgSliderStartTimer} title={`Síla efektu: ${lgStrength}%`}>
+            {activeSlider === "lg" && (
+              <div style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.3)", borderRadius: 8, padding: "3px 8px" }}
+                onMouseEnter={() => { if (sliderTimer.current) clearTimeout(sliderTimer.current); }}
+                onMouseLeave={sliderStartTimer}
+                title={`Síla Liquid Glass: ${lgStrength}%`}
+              >
                 <span style={{ fontSize: 10, color: "#a78bfa", fontWeight: 700, minWidth: 26, textAlign: "right" }}>{lgStrength}%</span>
                 <input type="range" min="10" max="100" step="5" value={lgStrength} onChange={e => changeLgStrength(Number(e.target.value))} style={{ width: 70, accentColor: "#a78bfa", cursor: "pointer" }} />
               </div>
@@ -3274,20 +3284,26 @@ export default function App() {
                 <button key={val} onClick={() => changeTheme(val)} style={{ padding: "6px 12px", background: theme === val ? "rgba(37,99,235,0.3)" : "transparent", border: `1px solid ${theme === val ? "rgba(37,99,235,0.5)" : "rgba(255,255,255,0.1)"}`, borderRadius: 8, color: theme === val ? "#60a5fa" : T.textMuted, cursor: "pointer", fontSize: 14 }}>{icon}</button>
               ))}
             </div>
-            {themeSliderVisible && (
+            <button onClick={toggleLiquidGlass} style={{ padding: "6px 12px", background: liquidGlass ? "rgba(139,92,246,0.25)" : "rgba(255,255,255,0.05)", border: `1px solid ${liquidGlass ? "rgba(139,92,246,0.6)" : "rgba(255,255,255,0.1)"}`, borderRadius: 8, color: liquidGlass ? "#a78bfa" : T.textMuted, cursor: "pointer", fontSize: 14, fontWeight: liquidGlass ? 700 : 400 }}>💎</button>
+            {/* Univerzální slider v mobilním menu */}
+            {activeSlider === "theme" && (
               <div style={{ display: "flex", alignItems: "center", gap: 6, background: isDark ? "rgba(129,140,248,0.12)" : "rgba(251,191,36,0.12)", border: `1px solid ${isDark ? "rgba(129,140,248,0.3)" : "rgba(251,191,36,0.3)"}`, borderRadius: 8, padding: "6px 10px" }}
-                onMouseEnter={() => { if (themeSliderTimer.current) clearTimeout(themeSliderTimer.current); }}
-                onMouseLeave={themeSliderStartTimer}
-                onTouchStart={() => { if (themeSliderTimer.current) clearTimeout(themeSliderTimer.current); }}
-                onTouchEnd={themeSliderStartTimer}
+                onMouseEnter={() => { if (sliderTimer.current) clearTimeout(sliderTimer.current); }}
+                onMouseLeave={sliderStartTimer}
+                onTouchStart={() => { if (sliderTimer.current) clearTimeout(sliderTimer.current); }}
+                onTouchEnd={sliderStartTimer}
               >
                 <span style={{ fontSize: 11, color: isDark ? "#818cf8" : "#f59e0b", fontWeight: 700, minWidth: 30 }}>{themeStrength}%</span>
                 <input type="range" min="0" max="100" step="5" value={themeStrength} onChange={e => changeThemeStrength(Number(e.target.value))} style={{ flex: 1, accentColor: isDark ? "#818cf8" : "#f59e0b", cursor: "pointer" }} />
               </div>
             )}
-            <button onClick={toggleLiquidGlass} style={{ padding: "6px 12px", background: liquidGlass ? "rgba(139,92,246,0.25)" : "rgba(255,255,255,0.05)", border: `1px solid ${liquidGlass ? "rgba(139,92,246,0.6)" : "rgba(255,255,255,0.1)"}`, borderRadius: 8, color: liquidGlass ? "#a78bfa" : T.textMuted, cursor: "pointer", fontSize: 14, fontWeight: liquidGlass ? 700 : 400 }}>💎</button>
-            {liquidGlass && lgSliderVisible && (
-              <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.3)", borderRadius: 8, padding: "6px 10px" }} onMouseEnter={() => { if (lgSliderTimer.current) clearTimeout(lgSliderTimer.current); }} onMouseLeave={lgSliderStartTimer} onTouchStart={() => { if (lgSliderTimer.current) clearTimeout(lgSliderTimer.current); }} onTouchEnd={lgSliderStartTimer}>
+            {activeSlider === "lg" && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.3)", borderRadius: 8, padding: "6px 10px" }}
+                onMouseEnter={() => { if (sliderTimer.current) clearTimeout(sliderTimer.current); }}
+                onMouseLeave={sliderStartTimer}
+                onTouchStart={() => { if (sliderTimer.current) clearTimeout(sliderTimer.current); }}
+                onTouchEnd={sliderStartTimer}
+              >
                 <span style={{ fontSize: 11, color: "#a78bfa", fontWeight: 700, minWidth: 30 }}>{lgStrength}%</span>
                 <input type="range" min="10" max="100" step="5" value={lgStrength} onChange={e => changeLgStrength(Number(e.target.value))} style={{ flex: 1, accentColor: "#a78bfa", cursor: "pointer" }} />
               </div>
