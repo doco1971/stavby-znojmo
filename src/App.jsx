@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-// BUILD: 2026_03_13_build0087
+// BUILD: 2026_03_13_build0089
 // ============================================================
 // POZNÁMKY PRO CLAUDE (čti na začátku každé session)
 // ============================================================
@@ -156,6 +156,14 @@ import * as XLSX from "xlsx";
 // BUILD0068 — brightness(2) + bílý glow — příliš agresivní
 // BUILD0069 — nadpisová ikona brightness(1.4), ikony v textu bez filtru
 // BUILD0070 — všechny ikony brightness(1.4)
+// BUILD0089 — Nápověda: aktualizována sekce 💎 Liquid Glass
+//   Doplněn popis posuvníku síly (10–100%), animovaných orbů, iOS 26 stylu
+// BUILD0088 — 💎 Liquid Glass posuvník síly efektu
+//   lgStrength state (10–100, default 60), uložen v localStorage
+//   lgS = lgStrength/100 — všechny T hodnoty dynamicky interpolovány
+//   Orb kontejner: opacity:lgS + transition 0.3s
+//   Slider se zobrazí vedle 💎 jen když je LG zapnutý (desktop + mobil)
+//   accentColor:#a78bfa — fialový slider styl
 // BUILD0087 — FIX: 💎 tlačítko nešlo vypnout Liquid Glass
 //   Příčina: .lg-shimmer měl position:absolute inset:0 z-index:3 přímo na headeru
 //            → překrýval obsah a blokoval klikání na tlačítka
@@ -2297,6 +2305,13 @@ export default function App() {
   const [liquidGlass, setLiquidGlass] = useState(() => {
     try { return localStorage.getItem("liquidGlass") === "1"; } catch { return false; }
   });
+  const [lgStrength, setLgStrength] = useState(() => {
+    try { return parseInt(localStorage.getItem("lgStrength") || "60", 10); } catch { return 60; }
+  });
+  const changeLgStrength = (v) => {
+    setLgStrength(v);
+    try { localStorage.setItem("lgStrength", String(v)); } catch {}
+  };
   const [exportPreview, setExportPreview] = useState(null);
 
   const isDarkComputed = (t) => t === "dark" || (t === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
@@ -2996,42 +3011,46 @@ export default function App() {
     });
   };
 
+  const lgS = liquidGlass ? lgStrength / 100 : 0;
+
   const T = isDark ? {
-    appBg: liquidGlass ? "#060d1a" : "#0f172a",
-    headerBg: liquidGlass ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.03)",
-    headerBorder: liquidGlass ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.08)",
-    cardBg: liquidGlass ? "rgba(255,255,255,0.07)" : "rgba(255,255,255,0.04)",
-    cardBorder: liquidGlass ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.08)",
-    theadBg: liquidGlass ? "rgba(255,255,255,0.05)" : "#1a2744",
-    cellBorder: liquidGlass ? "rgba(255,255,255,0.09)" : "rgba(255,255,255,0.07)",
-    filterBg: liquidGlass ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.02)",
+    appBg: lgS > 0 ? "#060d1a" : "#0f172a",
+    headerBg: lgS > 0 ? `rgba(255,255,255,${(0.03 + lgS * 0.07).toFixed(3)})` : "rgba(255,255,255,0.03)",
+    headerBorder: lgS > 0 ? `rgba(255,255,255,${(0.08 + lgS * 0.18).toFixed(3)})` : "rgba(255,255,255,0.08)",
+    cardBg: lgS > 0 ? `rgba(255,255,255,${(0.04 + lgS * 0.06).toFixed(3)})` : "rgba(255,255,255,0.04)",
+    cardBorder: lgS > 0 ? `rgba(255,255,255,${(0.08 + lgS * 0.14).toFixed(3)})` : "rgba(255,255,255,0.08)",
+    theadBg: lgS > 0 ? `rgba(255,255,255,${(lgS * 0.07).toFixed(3)})` : "#1a2744",
+    cellBorder: lgS > 0 ? `rgba(255,255,255,${(0.07 + lgS * 0.04).toFixed(3)})` : "rgba(255,255,255,0.07)",
+    filterBg: lgS > 0 ? `rgba(255,255,255,${(lgS * 0.05).toFixed(3)})` : "rgba(255,255,255,0.02)",
     text: "#e2e8f0", textMuted: "rgba(255,255,255,0.45)", textFaint: "rgba(255,255,255,0.25)",
-    inputBg: liquidGlass ? "rgba(255,255,255,0.06)" : "#0f172a",
-    inputBorder: liquidGlass ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.15)",
-    modalBg: liquidGlass ? "rgba(8,16,36,0.72)" : "#1e293b",
-    dropdownBg: liquidGlass ? "rgba(8,16,36,0.88)" : "#1e293b",
-    hoverBg: liquidGlass ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.07)",
+    inputBg: lgS > 0 ? `rgba(255,255,255,${(lgS * 0.08).toFixed(3)})` : "#0f172a",
+    inputBorder: lgS > 0 ? `rgba(255,255,255,${(0.15 + lgS * 0.07).toFixed(3)})` : "rgba(255,255,255,0.15)",
+    modalBg: lgS > 0 ? `rgba(8,16,36,${(0.5 + lgS * 0.25).toFixed(3)})` : "#1e293b",
+    dropdownBg: lgS > 0 ? `rgba(8,16,36,${(0.7 + lgS * 0.2).toFixed(3)})` : "#1e293b",
+    hoverBg: lgS > 0 ? `rgba(255,255,255,${(0.07 + lgS * 0.06).toFixed(3)})` : "rgba(255,255,255,0.07)",
     numColor: "#93c5fd",
-    backdropFilter: liquidGlass ? "blur(28px) saturate(200%) brightness(1.08)" : "none",
-    boxShadow: liquidGlass ? "0 2px 0 rgba(255,255,255,0.12) inset, 0 -1px 0 rgba(0,0,0,0.3) inset, 0 8px 32px rgba(0,0,0,0.5)" : "none",
+    backdropFilter: lgS > 0 ? `blur(${(8 + lgS * 24).toFixed(1)}px) saturate(${(130 + lgS * 80).toFixed(0)}%) brightness(${(1 + lgS * 0.1).toFixed(3)})` : "none",
+    boxShadow: lgS > 0 ? `0 2px 0 rgba(255,255,255,${(lgS * 0.14).toFixed(3)}) inset, 0 -1px 0 rgba(0,0,0,0.3) inset, 0 8px 32px rgba(0,0,0,${(0.2 + lgS * 0.3).toFixed(3)})` : "none",
+    orbOpacity: lgS,
   } : {
-    appBg: liquidGlass ? "#e8edf5" : "#f1f5f9",
-    headerBg: liquidGlass ? "rgba(255,255,255,0.58)" : "#ffffff",
-    headerBorder: liquidGlass ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.08)",
-    cardBg: liquidGlass ? "rgba(255,255,255,0.52)" : "#ffffff",
-    cardBorder: liquidGlass ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.08)",
-    theadBg: liquidGlass ? "rgba(255,255,255,0.45)" : "#dde3ed",
-    cellBorder: liquidGlass ? "rgba(0,0,0,0.06)" : "rgba(0,0,0,0.07)",
-    filterBg: liquidGlass ? "rgba(255,255,255,0.48)" : "#f8fafc",
+    appBg: lgS > 0 ? "#e8edf5" : "#f1f5f9",
+    headerBg: lgS > 0 ? `rgba(255,255,255,${(0.4 + lgS * 0.22).toFixed(3)})` : "#ffffff",
+    headerBorder: lgS > 0 ? `rgba(255,255,255,${(0.5 + lgS * 0.45).toFixed(3)})` : "rgba(0,0,0,0.08)",
+    cardBg: lgS > 0 ? `rgba(255,255,255,${(0.35 + lgS * 0.22).toFixed(3)})` : "#ffffff",
+    cardBorder: lgS > 0 ? `rgba(255,255,255,${(0.5 + lgS * 0.4).toFixed(3)})` : "rgba(0,0,0,0.08)",
+    theadBg: lgS > 0 ? `rgba(255,255,255,${(0.3 + lgS * 0.2).toFixed(3)})` : "#dde3ed",
+    cellBorder: lgS > 0 ? `rgba(0,0,0,${Math.max(0.02,(0.06 - lgS * 0.02)).toFixed(3)})` : "rgba(0,0,0,0.07)",
+    filterBg: lgS > 0 ? `rgba(255,255,255,${(0.3 + lgS * 0.22).toFixed(3)})` : "#f8fafc",
     text: "#1e293b", textMuted: "rgba(0,0,0,0.5)", textFaint: "rgba(0,0,0,0.3)",
-    inputBg: liquidGlass ? "rgba(255,255,255,0.72)" : "#ffffff",
-    inputBorder: liquidGlass ? "rgba(0,0,0,0.12)" : "rgba(0,0,0,0.2)",
-    modalBg: liquidGlass ? "rgba(255,255,255,0.78)" : "#ffffff",
-    dropdownBg: liquidGlass ? "rgba(255,255,255,0.92)" : "#ffffff",
-    hoverBg: liquidGlass ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.04)",
+    inputBg: lgS > 0 ? `rgba(255,255,255,${(0.5 + lgS * 0.28).toFixed(3)})` : "#ffffff",
+    inputBorder: lgS > 0 ? `rgba(0,0,0,${Math.max(0.06,(0.12 - lgS * 0.04)).toFixed(3)})` : "rgba(0,0,0,0.2)",
+    modalBg: lgS > 0 ? `rgba(255,255,255,${(0.55 + lgS * 0.28).toFixed(3)})` : "#ffffff",
+    dropdownBg: lgS > 0 ? `rgba(255,255,255,${(0.7 + lgS * 0.25).toFixed(3)})` : "#ffffff",
+    hoverBg: lgS > 0 ? `rgba(255,255,255,${(0.4 + lgS * 0.35).toFixed(3)})` : "rgba(0,0,0,0.04)",
     numColor: "#2563eb",
-    backdropFilter: liquidGlass ? "blur(28px) saturate(180%) brightness(1.04)" : "none",
-    boxShadow: liquidGlass ? "0 2px 0 rgba(255,255,255,0.95) inset, 0 -1px 0 rgba(0,0,0,0.08) inset, 0 4px 24px rgba(0,0,0,0.12)" : "none",
+    backdropFilter: lgS > 0 ? `blur(${(8 + lgS * 22).toFixed(1)}px) saturate(${(130 + lgS * 60).toFixed(0)}%) brightness(${(1 + lgS * 0.05).toFixed(3)})` : "none",
+    boxShadow: lgS > 0 ? `0 2px 0 rgba(255,255,255,${(0.6 + lgS * 0.38).toFixed(3)}) inset, 0 -1px 0 rgba(0,0,0,0.06) inset, 0 4px 24px rgba(0,0,0,${(0.04 + lgS * 0.1).toFixed(3)})` : "none",
+    orbOpacity: lgS,
   };
 
   const nextId = data.length > 0 ? data.reduce((max, r) => Math.max(max, r.id), 0) + 1 : 1;
@@ -3066,7 +3085,7 @@ export default function App() {
 
       {/* Liquid Glass — animované orby na pozadí */}
       {liquidGlass && (
-        <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0, overflow: "hidden" }}>
+        <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0, overflow: "hidden", opacity: lgS, transition: "opacity 0.3s" }}>
           {/* SVG displacement filter pro refrakci */}
           <svg width="0" height="0" style={{ position: "absolute" }}>
             <defs>
@@ -3138,6 +3157,12 @@ export default function App() {
               ))}
             </div>
             <button onClick={toggleLiquidGlass} onMouseEnter={e => showTooltip(e, liquidGlass ? "Vypnout Liquid Glass" : "Zapnout Liquid Glass")} onMouseLeave={hideTooltip} style={{ padding: "5px 9px", background: liquidGlass ? "rgba(139,92,246,0.25)" : "rgba(255,255,255,0.05)", border: `1px solid ${liquidGlass ? "rgba(139,92,246,0.6)" : "rgba(255,255,255,0.1)"}`, borderRadius: 8, color: liquidGlass ? "#a78bfa" : T.textMuted, cursor: "pointer", fontSize: 14, fontWeight: liquidGlass ? 700 : 400, boxShadow: liquidGlass ? "0 0 12px rgba(139,92,246,0.4)" : "none" }}>💎</button>
+            {liquidGlass && (
+              <div style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.3)", borderRadius: 8, padding: "3px 8px" }} onMouseEnter={e => showTooltip(e, `Síla efektu: ${lgStrength}%`)} onMouseLeave={hideTooltip}>
+                <span style={{ fontSize: 10, color: "#a78bfa", fontWeight: 700, minWidth: 26, textAlign: "right" }}>{lgStrength}%</span>
+                <input type="range" min="10" max="100" step="5" value={lgStrength} onChange={e => changeLgStrength(Number(e.target.value))} style={{ width: 70, accentColor: "#a78bfa", cursor: "pointer" }} />
+              </div>
+            )}
             <button onClick={() => setShowLogoutConfirm(true)} style={{ padding: "5px 12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: T.textMuted, cursor: "pointer", fontSize: 12 }}>Odhlásit</button>
           </>}
           {/* Mobil: hamburger ☰ */}
@@ -3162,6 +3187,12 @@ export default function App() {
               ))}
             </div>
             <button onClick={toggleLiquidGlass} style={{ padding: "6px 12px", background: liquidGlass ? "rgba(139,92,246,0.25)" : "rgba(255,255,255,0.05)", border: `1px solid ${liquidGlass ? "rgba(139,92,246,0.6)" : "rgba(255,255,255,0.1)"}`, borderRadius: 8, color: liquidGlass ? "#a78bfa" : T.textMuted, cursor: "pointer", fontSize: 14, fontWeight: liquidGlass ? 700 : 400 }}>💎</button>
+            {liquidGlass && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.3)", borderRadius: 8, padding: "6px 10px" }}>
+                <span style={{ fontSize: 11, color: "#a78bfa", fontWeight: 700, minWidth: 30 }}>{lgStrength}%</span>
+                <input type="range" min="10" max="100" step="5" value={lgStrength} onChange={e => changeLgStrength(Number(e.target.value))} style={{ flex: 1, accentColor: "#a78bfa", cursor: "pointer" }} />
+              </div>
+            )}
             <button onClick={() => { setShowHelp(true); setShowMobileMenu(false); }} style={{ padding: "6px 12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: T.textMuted, cursor: "pointer", fontSize: 13 }}>❓ Nápověda</button>
             {isAdmin && <button onClick={() => { setShowSettings(true); setShowMobileMenu(false); if (!isDemo) loadLog(); }} style={{ padding: "6px 12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: T.textMuted, cursor: "pointer", fontSize: 13 }}>⚙️ Nastavení</button>}
             {isAdmin && <button onClick={() => { setShowLog(true); setShowMobileMenu(false); }} style={{ padding: "6px 12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: T.textMuted, cursor: "pointer", fontSize: 13 }}>📜 Log</button>}
@@ -3470,7 +3501,7 @@ export default function App() {
                 { icon: "⚙️", title: "Nastavení", text: "Správa firem (název + barva řádku), číselníků objednatelů a stavbyvedoucích. Admin spravuje uživatele — přidává, mění hesla a role. Role: USER (čtení), USER EDITOR (editace), ADMIN (plný přístup), SUPERADMIN (+ nastavení aplikace)." },
                 { icon: "🔔", title: "Notifikace v prohlížeči", text: "Aplikace zobrazuje upozornění na blížící se termíny i mimo otevřenou záložku. Po přihlášení prohlížeč zobrazí dialog — klikněte Povolit. Notifikace se odešlou pro stavby s termínem do 7 pracovních dní, opakují každých 60 min pokud záložka není aktivní." },
                 { icon: "⏱️", title: "Automatické odhlášení", text: "Aplikace se automaticky odhlásí po 15 minutách nečinnosti. Před odhlášením se zobrazí varování s odpočítáváním 60 sekund — klikněte Jsem tady pro pokračování. Neaktivní v demo režimu." },
-                { icon: "🌙", title: "Tmavý / světlý režim + Liquid Glass", text: "Přepínejte mezi 🌞 světlým a 🌙 tmavým režimem. Tlačítko 💎 vedle přepínače aktivuje Liquid Glass — průsvitné frosted glass panely s blur efektem. Preference se ukládají v prohlížeči." },
+                { icon: "🌙", title: "Tmavý / světlý režim + Liquid Glass", text: "Přepínejte mezi 🌞 světlým a 🌙 tmavým režimem. Tlačítko 💎 aktivuje Liquid Glass — průsvitné panely s blur efektem, animovanými orby na pozadí a odlesky ve stylu iOS 26. Když je 💎 zapnutý, zobrazí se posuvník síly efektu (10–100%) — od sotva znatelného náznaku až po plný skleněný efekt. Všechny preference se ukládají v prohlížeči." },
                 { icon: "↔️", title: "Šířky sloupců", text: "Táhněte ikonu ⟺ v záhlaví sloupce pro změnu šířky (max 2000px). Kliknutím na ⟺ zadáte šířku číslem. Nastavení se uloží v databázi. Superadmin může resetovat šířky na výchozí v Nastavení → Aplikace." },
                 { icon: "📋", title: "Dva pohledy — Stránky / Vše", text: "Přepínač 📋 Stránky / 📜 Vše v liště přepíná mezi stránkovaným zobrazením (tlačítka −/+ pro počet řádků na stránce) a plným výpisem všech záznamů s vertikálním scrollem." },
                 { icon: "🔍", title: "Rozšířený filtr", text: "Tlačítko Filtr ▾ otevře plovoucí panel s rozšířenými možnostmi: rok uvedení do provozu, rozsah nabídkové ceny (od/do), prošlé termíny bez faktury, stav fakturace a kategorie I / II. Panel lze přetáhnout myší kamkoliv na plochu." },
