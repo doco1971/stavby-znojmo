@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
-// BUILD: 2026_03_13_build0073
+// BUILD: 2026_03_13_build0074
 // ============================================================
 // POZNÁMKY PRO CLAUDE (čti na začátku každé session)
 // ============================================================
@@ -64,7 +64,6 @@ import * as XLSX from "xlsx";
 // ============================================================
 // PENDING FUNKCE (dohodnuté, zatím neimplementované)
 // ============================================================
-// [PENDING] 📱 Mobilní kartičky — přepínač tabulka ↔ kartičky pro mobilní zobrazení
 // [PENDING] 🎨 Layout / rozmístění na ploše — až po dokončení všech funkcí
 //
 // PRAVIDLA EXPORTU (platí od BUILD0052)
@@ -151,6 +150,14 @@ import * as XLSX from "xlsx";
 // BUILD0068 — brightness(2) + bílý glow — příliš agresivní
 // BUILD0069 — nadpisová ikona brightness(1.4), ikony v textu bez filtru
 // BUILD0070 — všechny ikony brightness(1.4)
+// BUILD0074 — 📱 Mobilní kartičky
+//   useIsMobile hook (breakpoint 768px, resize listener)
+//   Výchozí pohled na mobilu: kartičky; na desktopu: tabulka
+//   Tlačítko přepínače v liště: jen na mobilu (📋/📇)
+//   Kartička: firma tečka + název + číslo stavby, 3 metriky,
+//     termín + badge (prošlý/blížící se/vyfakturováno/bez termínu),
+//     poznámka (💬 text), faktura(y) e/S, akce dle role
+//   Role: user=jen čtení, user_e=editovat+kopie, admin+=smazat
 // BUILD0073 — Tlačítko Filtr ▾: červené rozsvícení když je aktivní alespoň 1 rozšířený filtr
 //   Stav tlačítka: zavřený+neaktivní / zavřený+aktivní (červená) / otevřený / otevřený+aktivní (červená)
 //   Barva nezávislá na tom zda je panel otevřený — signalizuje aktivní filtrování
@@ -1907,6 +1914,136 @@ function SettingsModal({ firmy, objednatele, stavbyvedouci, users, onChange, onC
 }
 
 // ============================================================
+// MOBILE HOOK
+// ============================================================
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < breakpoint);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < breakpoint);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, [breakpoint]);
+  return isMobile;
+}
+
+// ============================================================
+// STAVBA CARD (mobilní kartička)
+// ============================================================
+function StavbaCard({ row, isEditor, isAdmin, isDark, firmy, onEdit, onCopy, onDelete, onHistorie, showTooltip, hideTooltip }) {
+  const firmaColor = (firmy.find(f => f.hodnota === row.firma)?.barva) || "#3b82f6";
+
+  const parseDatumCard = (s) => {
+    if (!s) return null;
+    const p = s.trim().split(".");
+    if (p.length !== 3) return null;
+    const d = new Date(`${p[2]}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`);
+    return isNaN(d) ? null : d;
+  };
+
+  const termínBadge = () => {
+    if (!row.ukonceni) return null;
+    const datum = parseDatumCard(row.ukonceni);
+    if (!datum) return null;
+    const dnes = new Date(); dnes.setHours(0,0,0,0);
+    const isFak = row.cislo_faktury && row.cislo_faktury.trim() !== "" && Number(row.castka_bez_dph) !== 0 && row.splatna;
+    if (isFak) return { label: "vyfakturováno", bg: "rgba(34,197,94,0.15)", color: "#4ade80", border: "rgba(34,197,94,0.4)" };
+    if (datum < dnes) return { label: "⚠️ prošlý termín", bg: "rgba(239,68,68,0.15)", color: "#f87171", border: "rgba(239,68,68,0.4)" };
+    const diff = Math.round((datum - dnes) / 86400000);
+    if (diff <= 10) return { label: `za ${diff} dní`, bg: "rgba(251,191,36,0.15)", color: "#fbbf24", border: "rgba(251,191,36,0.4)" };
+    return null;
+  };
+
+  const badge = termínBadge();
+  const cardBg = isDark ? "#1e293b" : "#ffffff";
+  const borderC = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)";
+  const textC = isDark ? "#e2e8f0" : "#1e293b";
+  const mutedC = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.45)";
+  const metricBg = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)";
+  const dividerC = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)";
+
+  return (
+    <div style={{ background: cardBg, borderRadius: 14, border: `1px solid ${borderC}`, overflow: "hidden", fontFamily: "'Segoe UI',sans-serif" }}>
+
+      {/* header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 14px", borderBottom: `1px solid ${dividerC}` }}>
+        <div style={{ width: 10, height: 10, borderRadius: "50%", background: firmaColor, flexShrink: 0 }} />
+        <span style={{ fontSize: 11, fontWeight: 600, color: firmaColor }}>{row.firma || "—"}</span>
+        <span style={{ marginLeft: "auto", fontSize: 11, color: mutedC }}>{row.cislo_stavby || ""}</span>
+      </div>
+
+      {/* název */}
+      <div style={{ padding: "10px 14px 8px" }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: textC, lineHeight: 1.35, marginBottom: 10 }}>{row.nazev_stavby || "—"}</div>
+
+        {/* metriky */}
+        <div style={{ display: "flex", gap: 7, marginBottom: 10 }}>
+          {[
+            { label: "nabídka", val: row.nabidka },
+            { label: "vyfakt.", val: row.vyfakturovano, green: Number(row.vyfakturovano) > 0 },
+            { label: "rozdíl", val: row.rozdil, colored: true },
+          ].map(m => (
+            <div key={m.label} style={{ flex: 1, background: metricBg, borderRadius: 8, padding: "7px 9px" }}>
+              <div style={{ fontSize: 10, color: mutedC, marginBottom: 2 }}>{m.label}</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: m.colored ? (Number(m.val) >= 0 ? "#4ade80" : "#f87171") : m.green ? "#4ade80" : textC }}>
+                {m.val != null && m.val !== "" && Number(m.val) !== 0 ? Number(m.val).toLocaleString("cs-CZ", { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : "—"}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* termín + badge */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ fontSize: 11, color: mutedC }}>{row.ukonceni ? `ukončení: ${row.ukonceni}` : "bez termínu"}</span>
+          {badge && <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 20, background: badge.bg, color: badge.color, border: `1px solid ${badge.border}` }}>{badge.label}</span>}
+        </div>
+      </div>
+
+      {/* poznámka */}
+      {row.poznamka && row.poznamka.trim() !== "" && (
+        <div style={{ display: "flex", gap: 7, alignItems: "flex-start", padding: "6px 14px", background: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)", borderTop: `1px solid ${dividerC}` }}>
+          <span style={{ fontSize: 13, flexShrink: 0, marginTop: 1 }}>💬</span>
+          <span style={{ fontSize: 11, color: mutedC, lineHeight: 1.5 }}>{row.poznamka}</span>
+        </div>
+      )}
+
+      {/* faktury */}
+      {row.cislo_faktury && row.cislo_faktury.trim() !== "" && (
+        <div style={{ padding: "7px 14px", background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", borderTop: `1px solid ${dividerC}` }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 7 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#ef4444", flexShrink: 0, marginTop: 1, textShadow: "0 0 6px rgba(239,68,68,0.5)" }}>e</span>
+            <span style={{ fontSize: 11, color: mutedC, lineHeight: 1.6 }}>
+              <span style={{ color: textC, fontWeight: 600 }}>{row.cislo_faktury}</span>
+              {Number(row.castka_bez_dph) > 0 && <> · {Number(row.castka_bez_dph).toLocaleString("cs-CZ")} Kč</>}
+              {row.splatna && <> · spl. {row.splatna}</>}
+            </span>
+          </div>
+          {row.cislo_faktury_2 && row.cislo_faktury_2.trim() !== "" && (
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 7, marginTop: 5, paddingTop: 5, borderTop: `1px dashed ${dividerC}` }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#facc15", flexShrink: 0, marginTop: 1, textShadow: "0 0 6px rgba(250,204,21,0.5)" }}>S</span>
+              <span style={{ fontSize: 11, color: mutedC, lineHeight: 1.6 }}>
+                <span style={{ color: textC, fontWeight: 600 }}>{row.cislo_faktury_2}</span>
+                {Number(row.castka_bez_dph_2) > 0 && <> · {Number(row.castka_bez_dph_2).toLocaleString("cs-CZ")} Kč</>}
+                {row.splatna_2 && <> · spl. {row.splatna_2}</>}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* akce */}
+      {(isEditor || isAdmin) && (
+        <div style={{ display: "flex", gap: 6, padding: "8px 14px", borderTop: `1px solid ${dividerC}`, flexWrap: "wrap" }}>
+          <button onClick={() => onHistorie(row)} style={{ padding: "4px 10px", background: "transparent", border: `1px solid ${borderC}`, borderRadius: 6, color: mutedC, cursor: "pointer", fontSize: 11 }}>🕐 hist.</button>
+          <button onClick={() => onCopy(row)} style={{ padding: "4px 10px", background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)", borderRadius: 6, color: "#34d399", cursor: "pointer", fontSize: 11 }}>📋</button>
+          <button onClick={() => onEdit(row)} style={{ padding: "4px 10px", background: "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.3)", borderRadius: 6, color: "#60a5fa", cursor: "pointer", fontSize: 11, marginLeft: "auto" }}>✏️ editovat</button>
+          {isAdmin && <button onClick={() => onDelete(row.id)} style={{ padding: "4px 10px", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 6, color: "#f87171", cursor: "pointer", fontSize: 11 }}>🗑️</button>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
 // MAIN APP
 // ============================================================
 export default function App() {
@@ -1942,6 +2079,9 @@ export default function App() {
   const [adding, setAdding] = useState(false);
   const [copyRow, setCopyRow] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const isMobile = useIsMobile(768);
+  const [cardView, setCardView] = useState(false);
+  useEffect(() => { if (isMobile) setCardView(true); }, [isMobile]);
   const [showSettings, setShowSettings] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [helpPos, setHelpPos] = useState({ x: Math.max(20, window.innerWidth/2 - 350), y: 60 });
@@ -2825,6 +2965,9 @@ export default function App() {
             <button key={vm} onClick={() => setViewMode(vm)} style={{ padding: "0 7px", height: 28, background: viewMode === vm ? (isDark ? "rgba(37,99,235,0.4)" : "#2563eb") : "transparent", border: "none", borderRadius: 5, color: viewMode === vm ? "#fff" : T.textMuted, cursor: "pointer", fontSize: 11, fontWeight: viewMode === vm ? 700 : 400, whiteSpace: "nowrap" }}>{lbl}</button>
           ))}
         </div>
+        {isMobile && (
+          <button onClick={() => setCardView(v => !v)} onMouseEnter={e => showTooltip(e, cardView ? "Přepnout na tabulku" : "Přepnout na kartičky")} onMouseLeave={hideTooltip} style={{ padding: "0 8px", height: 28, background: cardView ? "rgba(37,99,235,0.25)" : (isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)"), border: `1px solid ${cardView ? "rgba(37,99,235,0.5)" : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.15)")}`, borderRadius: 7, color: cardView ? "#60a5fa" : T.text, cursor: "pointer", fontSize: 13, fontWeight: cardView ? 700 : 400, flexShrink: 0 }} title={cardView ? "Tabulka" : "Kartičky"}>{cardView ? "☰" : "▦"}</button>
+        )}
         <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
           <span style={{ background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)", border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.15)"}`, borderRadius: 7, padding: "0 8px", height: 28, display: "inline-flex", alignItems: "center", color: T.text, fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>{filtered.length} záz.</span>
           <button onClick={() => setShowGraf(true)} onMouseEnter={e => showTooltip(e, "Sloupcový graf nákladů")} onMouseLeave={hideTooltip} style={{ padding: "0 10px", height: 28, background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.15)"}`, borderRadius: 7, color: T.text, cursor: "pointer", fontSize: 12, whiteSpace: "nowrap" }}>📊 Graf</button>
@@ -2856,8 +2999,33 @@ export default function App() {
         </div>
       </div>
 
+      {/* CARD VIEW (mobil) */}
+      {cardView && (
+        <div style={{ overflowY: "auto", flex: 1, padding: "10px 10px", display: "flex", flexDirection: "column", gap: 10, background: isDark ? "#0f172a" : "#f1f5f9" }}>
+          {displayRows.length === 0 && (
+            <div style={{ textAlign: "center", padding: 48, color: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)", fontSize: 14 }}>Žádné záznamy</div>
+          )}
+          {displayRows.map(row => (
+            <StavbaCard
+              key={row.id}
+              row={row}
+              isEditor={isEditor}
+              isAdmin={isAdmin}
+              isDark={isDark}
+              firmy={firmy}
+              onEdit={setEditRow}
+              onCopy={handleCopy}
+              onDelete={(id) => setDeleteConfirm({ id, step: 1 })}
+              onHistorie={setHistorieRow}
+              showTooltip={showTooltip}
+              hideTooltip={hideTooltip}
+            />
+          ))}
+        </div>
+      )}
+
       {/* TABLE */}
-      <div ref={tableWrapRef} className="table-wrapper" style={{ overflowX: "auto", overflowY: "auto", flex: 1, minHeight: 0, ...(viewMode === "scroll" ? { overflowY: "auto" } : {}) }}>
+      <div ref={tableWrapRef} className="table-wrapper" style={{ display: cardView ? "none" : undefined, overflowX: "auto", overflowY: "auto", flex: 1, minHeight: 0, ...(viewMode === "scroll" ? { overflowY: "auto" } : {}) }}>
         <table style={{ borderCollapse: "collapse", fontSize: 12.5, tableLayout: "fixed", width: "max-content" }}>
           <colgroup>
             <col style={{ width: 40 }} />
@@ -2993,7 +3161,7 @@ export default function App() {
         </table>
       </div>
 
-      <div ref={paginationRef} style={{ display: viewMode === "scroll" ? "none" : "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "6px 18px", borderTop: `1px solid ${T.cellBorder}`, background: T.filterBg, flexShrink: 0, minHeight: 44 }}>
+      <div ref={paginationRef} style={{ display: cardView || viewMode === "scroll" ? "none" : "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "6px 18px", borderTop: `1px solid ${T.cellBorder}`, background: T.filterBg, flexShrink: 0, minHeight: 44 }}>
         {totalPages > 1 && <>
           <button onClick={() => setPage(0)} disabled={page === 0} style={{ padding: "4px 9px", background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 6, color: T.textMuted, cursor: page === 0 ? "default" : "pointer", opacity: page === 0 ? 0.4 : 1, fontSize: 13 }}>«</button>
           <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} style={{ padding: "4px 9px", background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 6, color: T.textMuted, cursor: page === 0 ? "default" : "pointer", opacity: page === 0 ? 0.4 : 1, fontSize: 13 }}>‹</button>
@@ -3064,6 +3232,7 @@ export default function App() {
                 { icon: "🎨", title: "Barevné řádky", text: <span>Každá firma má přiřazenou barvu (nastavitelnou v Nastavení). <span style={{background:"rgba(34,197,94,0.25)",color:"#4ade80",padding:"1px 5px",borderRadius:4,fontWeight:600}}>Zelený řádek</span> = stavba má fakturu, částku i datum splatnosti — kompletně vyfakturována.</span> },
                 { icon: "⚠️", title: "Termíny ukončení", text: <span>Pole Ukončení se zobrazí <span style={{color:"#f87171",fontWeight:700}}>červeně ⚠️</span> pokud je termín v minulosti a stavba nemá fakturu. Tlačítko <span style={{color:"#f87171",fontWeight:700}}>⚠️ Termíny</span> v hlavičce zobrazí přehled staveb s termínem do 30 dní — včetně zbývajících pracovních dní.</span> },
                 { icon: "🔍", title: "Filtry a vyhledávání", text: "Vyhledávejte podle názvu nebo čísla stavby (pole Hledat). Filtrujte podle firmy, objednatele nebo stavbyvedoucího. Filtry lze kombinovat. Graf 📊 a export vždy pracují jen s aktuálně vyfiltrovanými daty." },
+                { icon: "📱", title: "Mobilní kartičky", text: "Na mobilu se automaticky zobrazí kartičkový pohled. Tlačítko ▦/☰ v liště přepíná mezi kartičkami a tabulkou. Každá kartička zobrazuje firmu, číslo a název stavby, 3 finanční metriky, termín s barevným stavem, poznámku a faktury. Akce (editovat, kopie, smazat) jsou dostupné dle role." },
                 { icon: "📋", title: "Kopírování stavby", text: "Tlačítko 📋 vedle editace otevře formulář s předvyplněnými daty dané stavby. Číslo stavby dostane příponu \" (kopie)\". Po uložení se vytvoří nový samostatný záznam — původní zůstane nezměněn. Funkce je dostupná pro editory i administrátory." },
                 { icon: "📊", title: "Graf nákladů", text: "Tlačítko 📊 Graf ve filtrovací liště otevře interaktivní sloupcový graf. Tři přepínače: 🏢 Firma, 📅 Měsíc, 📂 Kat. I / II (Plán.+SNK+Běžné op. vs. Plán.+Běžné op.+Poruchy). Graf vždy odráží aktuální filtr." },
                 { icon: "📤", title: "Export dat", text: "CSV — prostá tabulka. Excel (.xlsx) — standardní formát. Barevný Excel (.xls) — se zbarvením firem (potvrďte varování Excelu). PDF — tisk na A4 landscape. Vše pracuje s aktuálním filtrem." },
